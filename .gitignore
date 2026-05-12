@@ -6,3 +6,5 @@ tests/test_density
 tests/test_force
 tests/test_init
 tests/test_kernel
+scripts/*.png
+scripts/*.jpg

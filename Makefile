@@ -12,7 +12,7 @@
 # ----------------------------
 CC=gcc
 # OPENFLAG=-fopenmp
-CFLAGES= -O3 $(OPENFLAG) -Wall -Iinclude/
+CFLAGS= -O3 $(OPENFLAG) -Wall -Iinclude/
 
 
 # ----------------------------
@@ -60,45 +60,46 @@ $(BIN_DIR):
 # Main program
 # ----------------------------
 $(BIN_DIR)/sod_2d: $(OBJS) $(BUILD_DIR)/sod_2d.o | $(BIN_DIR)
-	$(CC) ${CFLAGES} -o $@ $(OBJS) $(BUILD_DIR)/sod_2d.o $(LDFLAGS)
+	$(CC) ${CFLAGS} -o $@ $(OBJS) $(BUILD_DIR)/sod_2d.o $(LDFLAGS)
 
 
 # ----------------------------
 # Compile core source files
 # ----------------------------
 $(BUILD_DIR)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) ${CFLAGES} -c src/sph_system.c -o $@
+	$(CC) ${CFLAGS} -c src/sph_system.c -o $@
 
 $(BUILD_DIR)/kernel.o: src/kernel.c include/kernel.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) ${CFLAGES} -c src/kernel.c -o $@
+	$(CC) ${CFLAGS} -c src/kernel.c -o $@
 
 $(BUILD_DIR)/density.o: src/density.c include/density.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c src/density.c -o $@
+	$(CC) $(CFLAGS) -c src/density.c -o $@
 
 $(BUILD_DIR)/force.o: src/force.c include/force.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c src/force.c -o $@
+	$(CC) $(CFLAGS) -c src/force.c -o $@
 
 $(BUILD_DIR)/init.o: src/init.c include/init.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c src/init.c -o $@
+	$(CC) $(CFLAGS) -c src/init.c -o $@
 
 $(BUILD_DIR)/integrator.o: src/integrator.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c src/integrator.c -o $@
+	$(CC) $(CFLAGS) -c src/integrator.c -o $@
 
 $(BUILD_DIR)/io.o: src/io.c include/io.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c src/io.c -o $@
+	$(CC) $(CFLAGS) -c src/io.c -o $@
 
 
 # ----------------------------
 # Compile main example file
 # ----------------------------
-$(BUILD_DIR)/sod_2d.o: examples/sod_2d.c | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c examples/sod_2d.c -o $@
+$(BUILD_DIR)/sod_2d.o: examples/sod_2d.c include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c examples/sod_2d.c -o $@
 
 # ----------------------------
 # Run main program
 # ----------------------------
 run: $(BIN_DIR)/sod_2d
 	./$(BIN_DIR)/sod_2d
+	cd $(BIN_DIR) && ./sod_2d
 
 # ----------------------------
 # Animation
@@ -112,7 +113,7 @@ animate: run
 test: tests/test_density tests/test_force tests/test_init tests/test_kernel
 
 tests/test_density: $(BUILD_DIR)/test_density.o | $(BIN_DIR)
-	$(CC) $(CFLAGES) -o $@ $(BUILD_DIR)/test_density.o $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $(BUILD_DIR)/test_density.o $(LDFLAGS)
 
 tests/test_force: $(BUILD_DIR)/test_force.o | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $(BUILD_DIR)/test_force.o $(LDFLAGS)
@@ -128,16 +129,16 @@ tests/test_kernel: $(BUILD_DIR)/test_kernel.o | $(BIN_DIR)
 # Compile test files
 # ----------------------------
 $(BUILD_DIR)/test_density.o: tests/test_density.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c tests/test_density.c -o $@
+	$(CC) $(CFLAGS) -c tests/test_density.c -o $@
 
 $(BUILD_DIR)/test_force.o: tests/test_force.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c tests/test_force.c -o $@
+	$(CC) $(CFLAGS) -c tests/test_force.c -o $@
 
 $(BUILD_DIR)/test_init.o: tests/test_init.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c tests/test_init.c -o $@
+	$(CC) $(CFLAGS) -c tests/test_init.c -o $@
 
 $(BUILD_DIR)/test_kernel.o: tests/test_kernel.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGES) -c tests/test_kernel.c -o $@
+	$(CC) $(CFLAGS) -c tests/test_kernel.c -o $@
 
 
 # ----------------------------
