@@ -1,4 +1,4 @@
-# SPH_tommy
+# SPH
 
 本專案是一個以 **C 語言**撰寫的 Smoothed Particle Hydrodynamics（SPH）模擬程式。  
 專案架構拆分為多個模組，包含 SPH 系統資料結構、kernel function、密度計算、作用力計算、初始化、時間積分與輸出功能。
