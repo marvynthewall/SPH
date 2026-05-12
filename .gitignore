@@ -1,3 +1,8 @@
 .DS_Store
 bin/*
 !bin/.gitkeep
+build/
+tests/test_density
+tests/test_force
+tests/test_init
+tests/test_kernel
