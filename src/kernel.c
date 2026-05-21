@@ -1,5 +1,28 @@
-#include "sph_system.h"
+#include "../include/kernel.h"
 
-void some_function_kernel() {
-    printf("[DEBUG] 來自 kernel.c 的測試 (檔名: %s)\n", __FILE__);
+void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr) {
+  // q is the dimensionless distance (r/h)
+  double q = r / h;
+
+  // 2D normalization constant sigma = 40 / (7 * pi)
+  // Add 1/h^2 to ensure the units and integral are correct
+  double norm = 40.0 / (7.0 * M_PI * h * h);
+
+  // Pre-calculate the constant term for the derivative, because
+  // dW/dr = (dW/dq) * (dq/dr) = (dW/dq) * (1/h)
+  double norm_dW = norm / h;
+
+  // Piecewise polynomial calculation
+  if (q >= 0.0 && q <= 0.5) {
+    *W = norm * (1.0 - 6.0 * q * q + 6.0 * q * q * q);
+    *dWdr = norm_dW * (-12.0 * q + 18.0 * q * q);
+  } else if (q > 0.5 && q <= 1.0) {
+    double diff = 1.0 - q;
+    *W = norm * 2.0 * diff * diff * diff;
+    *dWdr = norm_dW * (-6.0 * diff * diff);
+  } else {
+    // Beyond the influence range (q > 1 or r > h), the weight is 0
+    *W = 0.0;
+    *dWdr = 0.0;
+  }
 }
