@@ -1,6 +1,4 @@
-#include "../include/sph_system.h"
-#include "../src/density.c"
-#include "../src/kernel.c"
+#include "sph_system.h"
 
 int main() {
   printf("========== SPH Density Test ==========\n");

@@ -5,8 +5,8 @@ int main(int argc, char *argv[]) {
     printf("   SPH 模擬程式啟動中...             \n");
     printf("====================================\n");
 
-    some_function();
-    some_function_kernel();
+    //some_function();
+    //some_function_kernel();
 
     printf("\n初始化完成 ...\n");
 
