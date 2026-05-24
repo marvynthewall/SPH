@@ -22,6 +22,6 @@
  * particles: Array of all particles in the system
  * num_particles: Total number of particles
  */
-void compute_density(Particle *particles, int num_particles);
+void compute_density(SPHSystem2D *sph);
 
 #endif

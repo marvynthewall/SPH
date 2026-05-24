@@ -1,30 +1,32 @@
-# include "sph_system.h"
+#include "sph_system.h"
 
-void write_csv(SPHSystem2D * sph, const char * filename){
-    FILE * fp = fopen(filename, "w");
-    if(fp == NULL){
+void write_csv(SPHSystem2D *sph, const char *filename)
+{
+    FILE *fp = fopen(filename, "w");
+
+    if (fp == NULL) {
         fprintf(stderr, "Error: cannot open file %s\n", filename);
         exit(EXIT_FAILURE);
     }
 
-    fprintf(fp, "id,x,y,vx,vy,ax,ay,m,rho,P,u,h\n");
+    fprintf(fp, "id,x,y,vx,vy,ax,ay,m,rho,P,u,h,cs\n");
 
     for (int i = 0; i < sph->N; i++) {
-
         fprintf(fp,
-                "%d,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e\n",
-                i,
-                sph->x[i],
-                sph->y[i],
-                sph->vx[i],
-                sph->vy[i],
-                sph->ax[i],
-                sph->ay[i],
-                sph->m[i],
-                sph->rho[i],
-                sph->P[i],
-                sph->u[i],
-                sph->h[i]);
+                "%d,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e\n",
+                sph->particles[i].id,
+                sph->particles[i].x,
+                sph->particles[i].y,
+                sph->particles[i].vx,
+                sph->particles[i].vy,
+                sph->particles[i].ax,
+                sph->particles[i].ay,
+                sph->particles[i].mass,
+                sph->particles[i].density,
+                sph->particles[i].pressure,
+                sph->particles[i].u,
+                sph->particles[i].h,
+                sph->particles[i].cs);
     }
 
     fclose(fp);

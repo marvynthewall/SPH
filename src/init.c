@@ -85,52 +85,7 @@ void init_sod_2d(SPHSystem2D *sph, int nx, int ny)
     double dx = (xmax - xmin) / (nx - 1);
     double dy = (ymax - ymin) / (ny - 1);
 
-    double mass = 1.0 / N_expected;
-    double rho0 = 1.0;
-    double P0   = 1.0;
-    double u0   = 1.0;
-    double h0   = 1.3 * dx;
-
-    for (int iy = 0; iy < ny; iy++) {
-        for (int ix = 0; ix < nx; ix++) {
-
-            int id = iy * nx + ix;
-
-            sph->particles[id].id = id;
-
-            sph->particles[id].x = xmin + ix * dx;
-            sph->particles[id].y = ymin + iy * dy;
-
-            sph->particles[id].vx = 0.0;
-            sph->particles[id].vy = 0.0;
-
-            sph->particles[id].ax = 0.0;
-            sph->particles[id].ay = 0.0;
-
-            sph->particles[id].mass     = mass;
-            sph->particles[id].density  = rho0;
-            sph->particles[id].pressure = P0;
-            sph->particles[id].u        = u0;
-            sph->particles[id].h        = h0;
-
-            sph->particles[id].cs = 0.0;
-        }
-    }
-}
-
-void init_sod_2d(SPHSystem2D *sph, int nx, int ny)
-{
-    check_particle_number(sph, nx, ny, "init_sod_2d");
-
-    double xmin = 0.0;
-    double xmax = 1.0;
-    double ymin = 0.0;
-    double ymax = 1.0;
-
-    double dx = (xmax - xmin) / (nx - 1);
-    double dy = (ymax - ymin) / (ny - 1);
-
-    double gamma = 5/3;
+    double gamma = 1.4;
 
     double rho_L = 1.0;
     double P_L   = 1.0;
