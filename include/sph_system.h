@@ -4,6 +4,8 @@
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <float.h>
 
 /* Particle Structures - Including 2D SPH fields */
 typedef struct {

@@ -124,6 +124,8 @@ tests/test_init: $(BUILD_DIR)/test_init.o $(OBJS) | $(BIN_DIR)
 tests/test_kernel: $(BUILD_DIR)/test_kernel.o $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
+tests/test_integrator: $(BUILD_DIR)/test_integrator.o $(OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 # ----------------------------
 # Compile test files
@@ -139,6 +141,9 @@ $(BUILD_DIR)/test_init.o: tests/test_init.c include/sph_system.h | $(BUILD_DIR)
 
 $(BUILD_DIR)/test_kernel.o: tests/test_kernel.c include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c tests/test_kernel.c -o $@
+
+$(BUILD_DIR)/test_integrator.o: tests/test_integrator.c include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c tests/test_integrator.c -o $@
 
 
 # ----------------------------
