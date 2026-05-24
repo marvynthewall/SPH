@@ -1,43 +1,61 @@
-# include "sph_system.h"
+#include "sph_system.h"
 
-// temp
 void allocate_sph_system(SPHSystem2D *sph, int N)
 {
+    if (sph == NULL) {
+        fprintf(stderr, "Error: sph is NULL.\n");
+        exit(EXIT_FAILURE);
+    }
+
     if (N <= 0) {
-        fprintf(stderr, "Error: N must be positive. N = %d\n", N);
+        fprintf(stderr,
+                "Error: N must be positive. N = %d\n",
+                N);
         exit(EXIT_FAILURE);
     }
 
     sph->N = N;
 
-    sph->x   = (double *)malloc(N * sizeof(double));
-    sph->y   = (double *)malloc(N * sizeof(double));
+    sph->time  = 0.0;
+    sph->dt    = 0.0;
+    sph->t_end = 0.0;
+    sph->cfl   = 0.25;
 
-    sph->vx  = (double *)malloc(N * sizeof(double));
-    sph->vy  = (double *)malloc(N * sizeof(double));
+    sph->particles = (Particle *)malloc(N * sizeof(Particle));
 
-    sph->ax  = (double *)malloc(N * sizeof(double));
-    sph->ay  = (double *)malloc(N * sizeof(double));
-
-    sph->m   = (double *)malloc(N * sizeof(double));
-    sph->rho = (double *)malloc(N * sizeof(double));
-    sph->P   = (double *)malloc(N * sizeof(double));
-    sph->u   = (double *)malloc(N * sizeof(double));
-    sph->h   = (double *)malloc(N * sizeof(double));
-
-    if (sph->x   == NULL || sph->y   == NULL ||
-        sph->vx  == NULL || sph->vy  == NULL ||
-        sph->ax  == NULL || sph->ay  == NULL ||
-        sph->m   == NULL || sph->rho == NULL ||
-        sph->P   == NULL || sph->u   == NULL ||
-        sph->h   == NULL) {
-
+    if (sph->particles == NULL) {
         fprintf(stderr, "Error: memory allocation failed.\n");
-        free_sph_system(sph);
+        sph->N = 0;
         exit(EXIT_FAILURE);
     }
-}
 
+    // initialize particles
+    for (int i = 0; i < N; i++) {
+
+        sph->particles[i].id = i;
+
+        // position
+        sph->particles[i].x = 0.0;
+        sph->particles[i].y = 0.0;
+
+        // velocity
+        sph->particles[i].vx = 0.0;
+        sph->particles[i].vy = 0.0;
+
+        // acceleration
+        sph->particles[i].ax = 0.0;
+        sph->particles[i].ay = 0.0;
+
+        // SPH quantities
+        sph->particles[i].mass     = 0.0;
+        sph->particles[i].density  = 0.0;
+        sph->particles[i].pressure = 0.0;
+        sph->particles[i].u        = 0.0;
+        sph->particles[i].h        = 0.0;
+
+        sph->particles[i].cs = 0.0;
+    }
+}
 
 void free_sph_system(SPHSystem2D *sph)
 {
@@ -45,36 +63,15 @@ void free_sph_system(SPHSystem2D *sph)
         return;
     }
 
-    free(sph->x);
-    free(sph->y);
+    free(sph->particles);
 
-    free(sph->vx);
-    free(sph->vy);
+    sph->particles = NULL;
 
-    free(sph->ax);
-    free(sph->ay);
-
-    free(sph->m);
-    free(sph->rho);
-    free(sph->P);
-    free(sph->u);
-    free(sph->h);
-
-    sph->x   = NULL;
-    sph->y   = NULL;
-
-    sph->vx  = NULL;
-    sph->vy  = NULL;
-
-    sph->ax  = NULL;
-    sph->ay  = NULL;
-
-    sph->m   = NULL;
-    sph->rho = NULL;
-    sph->P   = NULL;
-    sph->u   = NULL;
-    sph->h   = NULL;
-
+    sph->particles = NULL;
     sph->N = 0;
-}
 
+    sph->time  = 0.0;
+    sph->dt    = 0.0;
+    sph->t_end = 0.0;
+    sph->cfl   = 0.0;
+}

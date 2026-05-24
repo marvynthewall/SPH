@@ -10,6 +10,7 @@ void write_csv(SPHSystem2D * sph, const char * filename){
     fprintf(fp, "id,x,y,vx,vy,ax,ay,m,rho,P,u,h\n");
 
     for (int i = 0; i < sph->N; i++) {
+
         fprintf(fp,
                 "%d,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e,%.10e\n",
                 i,
