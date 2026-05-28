@@ -1,7 +1,6 @@
 #include "../include/density.h"
-#include <omp.h>
 
-void compute_density(Particle *particles, int num_particles) {
+void compute_density(SPHSystem2D *sph){
 /*
  * OpenMP Parallelization Technique:
  * Adding #pragma omp parallel for will automatically split the loop
@@ -10,16 +9,15 @@ void compute_density(Particle *particles, int num_particles) {
  * `particles[i].density`. Each core is responsible for a different `i`,
  * so they don't modify the same memory location, thus avoiding Race Conditions.
  */
-#pragma omp parallel for
-  for (int i = 0; i < num_particles; i++) {
+  for (int i = 0; i < sph->N; i++) {
     double local_rho = 0.0;
-    Particle *p_i = &particles[i]; // indicate i-th particle
+    Particle *p_i = &sph->particles[i]; // indicate i-th particle
 
     // Placeholder for O(N^2) brute-force implementation.
     // Can be replaced with Neighbor list or Tree search acceleration in the
     // future.
-    for (int j = 0; j < num_particles; j++) {
-      Particle *p_j = &particles[j]; // indicate j-th particle
+    for (int j = 0; j < sph->N; j++) {
+      Particle *p_j = &sph->particles[j]; // indicate j-th particle
 
       // Calculate distance (2D)
       double dx = p_i->x - p_j->x;

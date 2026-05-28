@@ -8,3 +8,5 @@ tests/test_init
 tests/test_kernel
 scripts/*.png
 scripts/*.jpg
+*.csv
+.vscode

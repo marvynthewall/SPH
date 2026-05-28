@@ -1,6 +1,4 @@
 #include "../include/sph_system.h"
-#include "../src/kernel.c"
-#include <stdio.h>
 
 int main() {
   printf("========== SPH Kernel Test ==========\n");

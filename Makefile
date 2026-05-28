@@ -112,17 +112,17 @@ animate: run
 # ----------------------------
 test: tests/test_density tests/test_force tests/test_init tests/test_kernel
 
-tests/test_density: $(BUILD_DIR)/test_density.o $(BUILD_DIR)/density.o $(BUILD_DIR)/kernel.o | $(BIN_DIR)
+tests/test_density: $(BUILD_DIR)/test_density.o $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-tests/test_force: $(BUILD_DIR)/test_force.o | $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ $(BUILD_DIR)/test_force.o $(LDFLAGS)
+tests/test_force: $(BUILD_DIR)/test_force.o $(OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-tests/test_init: $(BUILD_DIR)/test_init.o | $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ $(BUILD_DIR)/test_init.o $(LDFLAGS)
+tests/test_init: $(BUILD_DIR)/test_init.o $(OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-tests/test_kernel: $(BUILD_DIR)/test_kernel.o | $(BIN_DIR)
-	$(CC) $(CFLAGS) -o $@ $(BUILD_DIR)/test_kernel.o $(LDFLAGS)
+tests/test_kernel: $(BUILD_DIR)/test_kernel.o $(OBJS) | $(BIN_DIR)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 
 # ----------------------------
