@@ -11,6 +11,7 @@ void compute_density(SPHSystem2D *sph){
  */
   for (int i = 0; i < sph->N; i++) {
     double local_rho = 0.0;
+    double drhodh = 0.0;
     Particle *p_i = &sph->particles[i]; // indicate i-th particle
 
     // Placeholder for O(N^2) brute-force implementation.
@@ -27,15 +28,18 @@ void compute_density(SPHSystem2D *sph){
       // Gather Approach:
       // Find particles that with distnace less than p_i's h
       if (r <= p_i->h) {
-        double W = 0.0, dWdr = 0.0;
-        cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr);
+        double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+        cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
 
         // Formula (5): rho_i = sum_j ( m_j * W_ij(h_i) )
         local_rho += p_j->mass * W;
+        // Formula: drho_i/dhi = sum_j ( m_j * (dW_ij(h_i) / dhi))
+        drhodh += p_j->mass * dWdh;
       }
     }
 
     // Return the calculated density to the particle
     p_i->density = local_rho;
+    p_i->ddensity_dh = drhodh;
   }
 }

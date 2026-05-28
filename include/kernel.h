@@ -27,6 +27,6 @@
  * W: Calculated kernel value (output)
  * dWdr: Calculated derivative of the kernel with respect to distance r (output)
  */
-void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr);
+void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr, double *dWdh);
 
 #endif
