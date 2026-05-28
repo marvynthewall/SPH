@@ -1,4 +1,4 @@
-#include "../include/density.h"
+#include "density.h"
 
 void compute_density(SPHSystem2D *sph){
 /*

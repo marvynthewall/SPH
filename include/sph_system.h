@@ -30,6 +30,9 @@ typedef struct {
     // acceleration
     double ax, ay;
 
+    // specific internal energy evolution
+    double dudt;
+
     // SPH particle properties
     double mass;       // m
     double density;    // rho
@@ -40,7 +43,7 @@ typedef struct {
     // useful derived quantities
     double cs;         // sound speed
     double ddensity_dh; // for pressure calculation
-    double fi;          // for pressure
+    double factor;      // for pressure
 
 } Particle;
 
