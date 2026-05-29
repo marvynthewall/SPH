@@ -7,6 +7,17 @@
 #include <string.h>
 #include <float.h>
 
+
+// Physical constants
+// can be put into constants.h file
+// for most case in the Astrophysics, or shockwave in the ISM (Interstellar Medium)
+// only consider monatomic gas gamma = 1.667
+// if for diatomic gas gamma = 1.4
+
+// for 2D, ideal monatonic gas gamma = (f+2) / f = 4 / 2 = 2.0
+#define GAMMA 2.0
+
+
 /* Particle Structures - Including 2D SPH fields */
 typedef struct {
 
@@ -21,6 +32,9 @@ typedef struct {
     // acceleration
     double ax, ay;
 
+    // specific internal energy evolution
+    double dudt;
+
     // SPH particle properties
     double mass;       // m
     double density;    // rho
@@ -30,6 +44,8 @@ typedef struct {
 
     // useful derived quantities
     double cs;         // sound speed
+    double ddensity_dh; // for pressure calculation
+    double factor;      // for pressure
 
 } Particle;
 
