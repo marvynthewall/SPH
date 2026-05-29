@@ -1,4 +1,4 @@
-#include "../include/sph_system.h"
+#include "sph_system.h"
 
 int main()
 {
