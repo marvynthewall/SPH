@@ -25,7 +25,6 @@ void compute_density(SPHSystem2D *sph) {
       double dx = p_i->x - p_j->x;
       double dy = p_i->y - p_j->y;
 
-
       double r = sqrt(dx * dx + dy * dy);
 
       // Gather Approach:
@@ -64,7 +63,7 @@ void compute_density_xreflective_yperiodic(SPHSystem2D *sph) {
         dy -= sph->box_size_y;
       if (dy < -0.5 * sph->box_size_y)
         dy += sph->box_size_y;
-      
+
       double r = sqrt(dx * dx + dy * dy);
 
       if (r <= p_i->h) {

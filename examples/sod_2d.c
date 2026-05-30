@@ -6,7 +6,7 @@ int main(int argc, char *argv[]) {
   printf("====================================\n");
   // 1. 設定預設值
   const char *output_filename = "output_0000.csv";
-  double mass = 0.005; // 預設質量
+  double mass = 0.001; // 預設質量
 
   // 2. 解析命令列參數
   for (int i = 1; i < argc; i++) {
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   // 如果你的 init_sod_2d_2 需要用到 mass，記得要把 mass 傳進去，
   // 例如：init_sod_2d_2(&sph, x, y, mass);
   // 這裡先維持你原本的呼叫方式：
-  // init_sod_2d_2(&sph, x, y, mass);
+  init_sod_2d_2(&sph, x, y, mass);
 
   // uniform init
   /*
