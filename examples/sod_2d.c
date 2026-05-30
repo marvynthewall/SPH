@@ -23,11 +23,6 @@ int main(int argc, char *argv[]) {
   double x = 1.0;
   double y = 1.0;
 
-  // 如果你的 init_sod_2d_2 需要用到 mass，記得要把 mass 傳進去，
-  // 例如：init_sod_2d_2(&sph, x, y, mass);
-  // 這裡先維持你原本的呼叫方式：
-  init_sod_2d_2(&sph, x, y, mass);
-
   // uniform init
   /*
   allocate_sph_system(&sph, 256);
