@@ -10,9 +10,17 @@
 # ----------------------------
 # Compiler settings
 # ----------------------------
-CC=gcc
-# OPENFLAG=-fopenmp
-CFLAGS= -O3 $(OPENFLAG) -Wall -Iinclude/
+OMP ?= 0
+
+ifeq ($(OMP),1)
+	CC = gcc-14
+	OPENFLAG = -fopenmp
+else
+	CC = gcc
+	OPENFLAG =
+endif
+
+CFLAGS   = -O3 $(OPENFLAG) -Wall -Iinclude/
 
 
 # ----------------------------

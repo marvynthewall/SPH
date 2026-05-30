@@ -23,13 +23,12 @@ SPH/
 目前 OpenMP 預設是關閉的：
 
 ```makefile
-# OPENFLAG=-fopenmp
+make
 ```
 
-如果需要啟用 OpenMP，可以將上面這行改成：
-
+如果需要啟用 OpenMP，當 `OMP=1` 時，Makefile 會使用 `CC = gcc-14`, `OPENFLAG = -fopenmp`，可改成：
 ```makefile
-OPENFLAG=-fopenmp
+make OMP=1
 ```
 
 然後重新編譯：
