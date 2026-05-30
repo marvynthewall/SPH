@@ -1,8 +1,8 @@
 #ifndef DENSITY_H
 #define DENSITY_H
 
+#include <omp.h>
 #include "sph_system.h"
-
 /*
  * Calculate the density of all particles
  *
@@ -23,5 +23,6 @@
  * num_particles: Total number of particles
  */
 void compute_density(SPHSystem2D *sph);
+void compute_density_xreflective_yperiodic(SPHSystem2D *sph);
 
 #endif

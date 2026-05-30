@@ -15,7 +15,7 @@
 // if for diatomic gas gamma = 1.4
 
 // for 2D, ideal monatonic gas gamma = (f+2) / f = 4 / 2 = 2.0
-#define GAMMA 2.0
+#define GAMMA 1.666666666666667
 
 
 /* Particle Structures - Including 2D SPH fields */
@@ -61,6 +61,11 @@ typedef struct {
     double time;
     double dt;
     double t_end;
+
+    // domain size
+    double box_size_x;
+    double box_size_y;
+
     // 0.1 - 0.3 from paper
     double cfl;
 

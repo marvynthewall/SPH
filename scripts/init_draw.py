@@ -55,4 +55,6 @@ ax.set_ylim(0.0, 1.0)
 # Set title with the filename
 plt.title(f"SPH Density & Smoothing Length: {args.filename}") 
 
-plt.show()
+output_png = args.filename.replace(".csv", ".png")
+plt.savefig(output_png, bbox_inches='tight', dpi=150)
+print(f"Saved plot to {output_png}")
