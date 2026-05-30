@@ -5,10 +5,10 @@
 void test_pressure_soundspeed() {
     SPHSystem2D sph;
     allocate_sph_system(&sph, 1);
-    sph.particles[0].density = 1.0;
+    sph.particles[0].rho = 1.0;
     sph.particles[0].u = 1.0;
     sph.particles[0].h = 0.1;
-    sph.particles[0].ddensity_dh = 0.0;
+    sph.particles[0].drho_dh = 0.0;
 
     compute_pressure_soundspeed_factor(&sph);
 
@@ -31,13 +31,13 @@ void test_force_two_particle_head_on_collision(void){
     
     for (int i = 0; i < 2; i++) {
         sph.particles[i].mass = 1.0;
-        sph.particles[i].density = 1.0;
+        sph.particles[i].rho = 1.0;
         sph.particles[i].pressure = 1.0;
         sph.particles[i].u = 1.0;
         sph.particles[i].h = 1.0;
         sph.particles[i].cs = 1.0;
         sph.particles[i].factor = 1.0;
-        sph.particles[i].ddensity_dh = 0.0;
+        sph.particles[i].drho_dh = 0.0;
     }
 
     sph.particles[0].x = 0.0;  sph.particles[0].y = 0.0;

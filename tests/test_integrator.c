@@ -102,7 +102,7 @@ void init_single_particle_test(SPHSystem2D *sph)
     sph->particles[0].ax = 0.0;
     sph->particles[0].ay = 0.0;
     sph->particles[0].mass = 1.0;
-    sph->particles[0].density = 1.0;
+    sph->particles[0].rho = 1.0;
     sph->particles[0].pressure = 0.0;
     sph->particles[0].u = 1.0;
 

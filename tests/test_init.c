@@ -23,8 +23,8 @@ void update_adaptive_h(SPHSystem2D *sph, int max_iter, double tol)
             compute_density(sph);
 
             double h = p_i->h;
-            double rho = p_i->density;
-            double drhodh = p_i->ddensity_dh;
+            double rho = p_i->rho;
+            double drhodh = p_i->drho_dh;
 
             double F = rho * h * h - C;
             double dFdh = drhodh * h * h + 2.0 * rho * h;
@@ -70,13 +70,13 @@ void check_adaptive_h(SPHSystem2D *sph, double eta, double tol)
 
         double C = eta * eta * p_i->mass;
         double residual =
-            fabs(p_i->density * p_i->h * p_i->h - C) / C;
+            fabs(p_i->rho * p_i->h * p_i->h - C) / C;
 
         printf("i=%d h=%e rho=%e rho*h^2=%e C=%e residual=%e\n",
                i,
                p_i->h,
-               p_i->density,
-               p_i->density * p_i->h * p_i->h,
+               p_i->rho,
+               p_i->rho * p_i->h * p_i->h,
                C,
                residual);
 
