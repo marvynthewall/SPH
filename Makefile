@@ -10,9 +10,32 @@
 # ----------------------------
 # Compiler settings
 # ----------------------------
-CC=gcc
-# OPENFLAG=-fopenmp
-CFLAGS= -O3 $(OPENFLAG) -Wall -Iinclude/
+OMP ?= 0
+GPU ?= 0
+
+ifeq ($(GPU),1)
+    # GPU compilation settings
+	CC   = gcc
+	NVCC = nvcc
+	CFLAGS   = -O3 $(OPENFLAG) -Wall -Iinclude/
+	NVCCFLAGS = -O3 -Iinclude/ -Xcompiler "-Wall"
+	LDFLAGS  = -lm -L/usr/local/cuda/lib64 -lcudart 
+
+else
+    # CPU Openmp compilation settings
+	ifeq ($(OMP),1)
+		CC = gcc-14
+		OPENFLAG = -fopenmp
+	# CPU normal compilation settings
+	else
+		CC = gcc
+		OPENFLAG =
+	endif
+	CFLAGS   = -O3 $(OPENFLAG) -Wall -Iinclude/
+	LDFLAGS  = -lm $(OPENFLAG)
+endif
+
+
 
 
 # ----------------------------
@@ -40,11 +63,23 @@ OBJS = $(BUILD_DIR)/sph_system.o \
        $(BUILD_DIR)/io.o
 
 
+# For GPU compilation
+# ifeq ($(GPU),1)
+#     OBJS += $(BUILD_DIR)/cuda_kernels.o
+# endif
+
+
 # ----------------------------
 # Default target
 # ----------------------------
 all: $(BIN_DIR)/sod_2d
-
+	@if [ "$(GPU)" = "1" ]; then \
+		echo "【已啟用 CUDA GPU 顯示卡加速編譯】"; \
+	elif [ "$(OMP)" = "1" ]; then \
+		echo "【已啟用 OpenMP 平行加速編譯】"; \
+	else \
+		echo "【CPU 常規編譯】"; \
+	fi
 
 # ----------------------------
 # Create directories
@@ -86,6 +121,11 @@ $(BUILD_DIR)/integrator.o: src/integrator.c include/sph_system.h | $(BUILD_DIR)
 
 $(BUILD_DIR)/io.o: src/io.c include/io.h include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c src/io.c -o $@
+
+
+# For GPU compilation
+$(BUILD_DIR)/cuda_kernels.o: src/cuda_kernels.cu include/sph_system.h | $(BUILD_DIR)
+	$(NVCC) $(NVCCFLAGS) -c src/cuda_kernels.cu -o $@
 
 
 # ----------------------------
@@ -156,3 +196,4 @@ clean:
 	       tests/test_density \
 	       tests/test_force \
 	       tests/test_init \
+           tests/test_integrator

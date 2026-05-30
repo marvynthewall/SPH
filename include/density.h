@@ -1,8 +1,8 @@
 #ifndef DENSITY_H
 #define DENSITY_H
 
+#include <omp.h>
 #include "sph_system.h"
-
 /*
  * Calculate the density of all particles
  *
