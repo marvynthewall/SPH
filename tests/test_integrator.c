@@ -118,6 +118,7 @@ void compute_forces_dummy(SPHSystem2D *sph)
     for (int i = 0; i < sph->N; i++) {
         sph->particles[i].ax = 2.0;
         sph->particles[i].ay = 0.0;
+        sph->particles[i].dudt = 0.0;
     }
 }
 
@@ -150,9 +151,15 @@ int main(int argc, char **argv)
     sph.particles[0].ax = 2.0;
     sph.particles[0].ay = 0.0;
 
+    sph.particles[0].mass = 1.0;
+    sph.particles[0].rho = 1.0;
+    sph.particles[0].pressure = 0.0;
+    sph.particles[0].u = 1.0;
+    sph.particles[0].dudt = 0.0;
+
 
     sph.time  =  0.0;
-    sph.t_end = 1.0;
+    sph.t_end = 10.0;
     sph.cfl = 0.1;
     
     if (strcmp(argv[1], "euler") == 0) { printf("Running Euler Method\n"); }
