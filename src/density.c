@@ -39,7 +39,7 @@ void compute_density(SPHSystem2D *sph){
     }
 
     // Return the calculated density to the particle
-    p_i->density = local_rho;
-    p_i->ddensity_dh = drhodh;
+    p_i->rho = local_rho;
+    p_i->drho_dh = drhodh;
   }
 }
