@@ -22,7 +22,7 @@ void write_csv(SPHSystem2D *sph, const char *filename)
                 sph->particles[i].ax,
                 sph->particles[i].ay,
                 sph->particles[i].mass,
-                sph->particles[i].density,
+                sph->particles[i].rho,
                 sph->particles[i].pressure,
                 sph->particles[i].u,
                 sph->particles[i].h,

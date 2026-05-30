@@ -20,6 +20,7 @@ void allocate_sph_system(SPHSystem2D *sph, int N)
     sph->dt    = 0.0;
     sph->t_end = 0.0;
     sph->cfl   = 0.25;
+    init_sph_parameter(sph);
 
     sph->particles = (Particle *)malloc(N * sizeof(Particle));
 
@@ -48,7 +49,7 @@ void allocate_sph_system(SPHSystem2D *sph, int N)
 
         // SPH quantities
         sph->particles[i].mass     = 0.0;
-        sph->particles[i].density  = 0.0;
+        sph->particles[i].rho      = 0.0;
         sph->particles[i].pressure = 0.0;
         sph->particles[i].u        = 0.0;
         sph->particles[i].h        = 0.0;
@@ -74,4 +75,7 @@ void free_sph_system(SPHSystem2D *sph)
     sph->dt    = 0.0;
     sph->t_end = 0.0;
     sph->cfl   = 0.0;
+    sph->epsilon = 0.0;
+    sph->alpha = 0.0;
+    sph->beta = 0.0;
 }
