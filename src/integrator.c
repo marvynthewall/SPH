@@ -104,62 +104,89 @@ double compute_timestep_signal_velocity(SPHSystem2D *sph)
 }
 
 
-double step_euler(SPHSystem2D *sph, double (*calculate_timep_step)(SPHSystem2D *))
+double step_euler(
+    SPHSystem2D *sph,
+    double (*calculate_timep_step)(SPHSystem2D *),
+    void (*compute_forces)(SPHSystem2D *)
+)
 {
     double dt = calculate_timep_step(sph);
 
     for (int i = 0; i < sph->N; i++) {
-        sph->particles[i].vx += sph->particles[i].ax * dt;
-        sph->particles[i].vy += sph->particles[i].ay * dt;
 
+        // use old velocity to update position
         sph->particles[i].x += sph->particles[i].vx * dt;
         sph->particles[i].y += sph->particles[i].vy * dt;
 
-        sph->particles[i].u += sph->particles[i].dudt * dt;
-        // prevent negative internal energy which can cause NaN in sound speed and pressure
-        if (sph->particles[i].u < 1e-10) {sph->particles[i].u = 1e-10;}
+        // then update velocity using old acceleration
+        sph->particles[i].vx += sph->particles[i].ax * dt;
+        sph->particles[i].vy += sph->particles[i].ay * dt;
 
+        // update internal energy using old dudt
+        sph->particles[i].u += sph->particles[i].dudt * dt;
+
+        if (sph->particles[i].u < 1e-10) {
+            sph->particles[i].u = 1e-10;
+        }
     }
-    
-    compute_density(sph);      
-    calculate_timep_step(sph);
+
+    // update hydrodynamic quantities for next step
+    compute_density(sph);
+    compute_pressure_soundspeed_factor(sph);
+    compute_forces(sph);
+
     sph->time += dt;
+
     return dt;
 }
 
-
-double step_leapfrog_kdk(SPHSystem2D *sph, double (*calculate_timep_step)(SPHSystem2D *) , void (*compute_forces)(SPHSystem2D *))
+double step_leapfrog_kdk(
+    SPHSystem2D *sph,
+    double (*calculate_time_step)(SPHSystem2D *),
+    void (*compute_forces)(SPHSystem2D *)
+)
 {
-    double dt = calculate_timep_step(sph);
+    double dt = calculate_time_step(sph);
 
-    // Kick: half-step velocity update
+    // Kick: half-step velocity and internal energy update
     for (int i = 0; i < sph->N; i++) {
+
         sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
         sph->particles[i].vy += 0.5 * sph->particles[i].ay * dt;
+
+        sph->particles[i].u  += 0.5 * sph->particles[i].dudt * dt;
+
+        if (sph->particles[i].u < 1e-10) {
+            sph->particles[i].u = 1e-10;
+        }
     }
 
     // Drift: full-step position update
     for (int i = 0; i < sph->N; i++) {
+
         sph->particles[i].x += sph->particles[i].vx * dt;
         sph->particles[i].y += sph->particles[i].vy * dt;
     }
 
     sph->time += dt;
 
+    // Update hydrodynamic quantities at new position
     compute_density(sph);
-    // 密度變了，必須接著更新最新的壓力、音速與 factor！
     compute_pressure_soundspeed_factor(sph);
     compute_forces(sph);
-    // Kick: another half-step velocity update
+
+    // Kick: another half-step velocity and internal energy update
     for (int i = 0; i < sph->N; i++) {
+
         sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
         sph->particles[i].vy += 0.5 * sph->particles[i].ay * dt;
-        sph->particles[i].u  += sph->particles[i].dudt * dt;
 
-        // prevent negative internal energy which can cause NaN in sound speed and pressure
-        if (sph->particles[i].u < 1e-10) {sph->particles[i].u = 1e-10;}
+        sph->particles[i].u  += 0.5 * sph->particles[i].dudt * dt;
+
+        if (sph->particles[i].u < 1e-10) {
+            sph->particles[i].u = 1e-10;
+        }
     }
-
 
     return dt;
 }

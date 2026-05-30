@@ -169,7 +169,7 @@ int main(int argc, char **argv)
         );
 
         if(strcmp(argv[1], "euler") == 0){
-            step_euler(&sph, compute_timestep);
+            step_euler(&sph, compute_timestep, compute_forces_dummy);
         }else if(strcmp(argv[1], "kdk") == 0){
             step_leapfrog_kdk(&sph, compute_timestep, compute_forces_dummy);
         }
