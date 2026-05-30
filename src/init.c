@@ -259,3 +259,85 @@ void init_sod_2d_2(SPHSystem2D *sph, double x, double y, double mass)
             sph->particles[i].cs =sqrt(gamma * P_R / rho_R);
     }
 }
+
+
+void init_sod_2d_3(SPHSystem2D *sph, double x_max, double y_max, double target_mass) {
+    double gamma = 1.4;
+
+    // Macroscopic physical quantities
+    double rho_L = 1.0, P_L = 1.0;
+    double rho_R = 0.125, P_R = 0.1;
+    double eta = 1.3;
+
+    double x_mid = x_max / 2.0;
+
+    // 1. Derive the perfect square spacing (dx = dy) from target mass and density
+    double dx_L = sqrt(target_mass / rho_L);
+    double dx_R = sqrt(target_mass / rho_R);
+
+    // 2. Calculate the number of particles each region can hold
+    // (floor the value to ensure particles stay within the physical boundaries)
+    int nx_L = (int)(x_mid / dx_L);
+    int ny_L = (int)(y_max / dx_L);
+
+    int nx_R = (int)((x_max - x_mid) / dx_R);
+    int ny_R = (int)(y_max / dx_R);
+
+    // 3. Let the geometric space determine the actual total number of particles
+    int N_L = nx_L * ny_L;
+    int N_R = nx_R * ny_R;
+    int N = N_L + N_R;
+
+    // Allocate memory for the SPH system
+    allocate_sph_system(sph, N);
+
+    // Pre-calculate smoothing lengths for both regions
+    double h_L = eta * dx_L;
+    double h_R = eta * dx_R;
+
+    int p_idx = 0; // Particle array index
+
+    // 4. Distribute the high-pressure fluid in the left region
+    // (Center the grid by adding an offset, leaving half a dx as the distance to the walls)
+    double offset_x_L = (x_mid - (nx_L * dx_L)) / 2.0 + (dx_L / 2.0);
+    double offset_y_L = (y_max - (ny_L * dx_L)) / 2.0 + (dx_L / 2.0);
+
+    for (int i = 0; i < nx_L; i++) {
+        for (int j = 0; j < ny_L; j++) {
+            Particle *p = &sph->particles[p_idx++];
+            p->id = p_idx;
+            p->x = offset_x_L + i * dx_L;
+            p->y = offset_y_L + j * dx_L;
+            p->mass = target_mass;
+            p->rho = rho_L;
+            p->pressure = P_L;
+            p->u = P_L / ((gamma - 1.0) * rho_L);
+            p->h = h_L;
+            p->cs = sqrt(gamma * P_L / rho_L);
+            p->vx = 0.0;
+            p->vy = 0.0;
+        }
+    }
+
+    // 5. Distribute the low-pressure fluid in the right region
+    // (X coordinates start from x_mid)
+    double offset_x_R = x_mid + ( (x_max - x_mid - (nx_R * dx_R)) / 2.0 ) + (dx_R / 2.0);
+    double offset_y_R = (y_max - (ny_R * dx_R)) / 2.0 + (dx_R / 2.0);
+
+    for (int i = 0; i < nx_R; i++) {
+        for (int j = 0; j < ny_R; j++) {
+            Particle *p = &sph->particles[p_idx++];
+            p->id = p_idx;
+            p->x = offset_x_R + i * dx_R;
+            p->y = offset_y_R + j * dx_R;
+            p->mass = target_mass;
+            p->rho = rho_R;
+            p->pressure = P_R;
+            p->u = P_R / ((gamma - 1.0) * rho_R);
+            p->h = h_R;
+            p->cs = sqrt(gamma * P_R / rho_R);
+            p->vx = 0.0;
+            p->vy = 0.0;
+        }
+    }
+}
