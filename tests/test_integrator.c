@@ -1,5 +1,6 @@
 #include "sph_system.h"
-
+// Usage
+// ./test_integrator [euler/kdk]
 
 
 void test_timestep_single_particle(void)

@@ -110,7 +110,7 @@ animate: run
 # ----------------------------
 # Tests
 # ----------------------------
-test: tests/test_density tests/test_force tests/test_init tests/test_kernel
+test: tests/test_density tests/test_force tests/test_init tests/test_kernel tests/test_integrator
 
 tests/test_density: $(BUILD_DIR)/test_density.o $(OBJS) | $(BIN_DIR)
 	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
