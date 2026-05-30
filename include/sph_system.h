@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <float.h>
-
+#include <assert.h>
 
 // Physical constants
 // can be put into constants.h file
@@ -61,6 +61,7 @@ typedef struct {
     double time;
     double dt;
     double t_end;
+    // 0.1 - 0.3 from paper
     double cfl;
 
 } SPHSystem2D;
