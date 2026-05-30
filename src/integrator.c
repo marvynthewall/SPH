@@ -187,6 +187,5 @@ double step_leapfrog_kdk(
             sph->particles[i].u = 1e-10;
         }
     }
-
     return dt;
 }
