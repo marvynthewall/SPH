@@ -19,7 +19,7 @@ ifeq ($(GPU),1)
 	NVCC = nvcc
 	CFLAGS   = -O3 $(OPENFLAG) -Wall -Iinclude/
 	NVCCFLAGS = -O3 -Iinclude/ -Xcompiler "-Wall"
-	LDFLAGS  = -lm -L/usr/local/cuda/lib64 -lcudart 
+	LDFLAGS  = -lm -L/usr/lib/x86_64-linux-gnu -lcudart 
 
 else
     # CPU Openmp compilation settings
