@@ -9,6 +9,7 @@ void compute_density(SPHSystem2D *sph){
  * `particles[i].density`. Each core is responsible for a different `i`,
  * so they don't modify the same memory location, thus avoiding Race Conditions.
  */
+
   for (int i = 0; i < sph->N; i++) {
     double local_rho = 0.0;
     double drhodh = 0.0;
