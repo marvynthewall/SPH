@@ -37,14 +37,14 @@ typedef struct {
 
     // SPH particle properties
     double mass;       // m
-    double density;    // rho
+    double rho;        // rho
     double pressure;   // P
     double u;          // specific internal energy
     double h;          // smoothing length
 
     // useful derived quantities
     double cs;         // sound speed
-    double ddensity_dh; // for pressure calculation
+    double drho_dh;     // for pressure calculation
     double factor;      // for pressure
 
 } Particle;
@@ -63,6 +63,10 @@ typedef struct {
     double t_end;
     double cfl;
 
+    // for Viscositvy 
+    double epsilon;
+    double alpha;
+    double beta;
 } SPHSystem2D;
 
 
@@ -78,5 +82,6 @@ void free_sph_system(SPHSystem2D *sph);
 #include "integrator.h"
 #include "io.h"
 #include "kernel.h"
+#include "constants.h"
 
 #endif
