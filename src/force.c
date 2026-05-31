@@ -375,6 +375,7 @@ void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
       }
     }
   }
+}
 
   __attribute__((always_inline)) static inline void compute_pairwise_physics_3d(
       Particle * p_i, Particle * p_j, SPHSystem * sph) {
