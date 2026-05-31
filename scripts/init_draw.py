@@ -10,6 +10,8 @@ parser = argparse.ArgumentParser(description="Plot SPH simulation density distri
 # Add -f argument with a default value
 parser.add_argument("-f", "--filename", type=str, default="output_0000.csv", 
                     help="CSV filename to read (default: output_0000.csv)")
+parser.add_argument("-x", "--x", type=float, default=1.0, 
+                    help="size of x direction (default: 1.0)")
 
 # Parse arguments
 args = parser.parse_args()
@@ -19,7 +21,7 @@ print(f"Reading file: {args.filename} ...")
 df = pd.read_csv(args.filename)
 
 # Create figure and axis
-fig, ax = plt.subplots()
+fig, ax = plt.subplots(figsize=(20,6))
 
 # ---------------------------------------------------------
 # 1. Draw semi-transparent circles for smoothing length (h)
@@ -40,7 +42,7 @@ ax.add_collection(patch_col)
 # 2. Draw particle center points
 # ---------------------------------------------------------
 # Set zorder=2 to ensure points are drawn on top of the circles (zorder=1)
-sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=10, zorder=2, cmap='viridis')
+sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=1, zorder=2, cmap='viridis')
 
 # Add colorbar and labels
 fig.colorbar(sc, ax=ax, label="density")
@@ -49,7 +51,7 @@ ax.set_ylabel("y")
 ax.set_aspect("equal")
 
 # Set the limits of x and y axes to 0.0 ~ 1.0
-ax.set_xlim(0.0, 1.0)
+ax.set_xlim(0.0, args.x)
 ax.set_ylim(0.0, 1.0)
 
 # Set title with the filename

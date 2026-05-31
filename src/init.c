@@ -197,7 +197,7 @@ void init_sod_2d_2(SPHSystem2D *sph, double x, double y, double mass) {
   // mass per particle
   // double mass = 0.001;
 
-  double eta = 1.8;
+  double eta = 1.3;
   double h_L = sqrt(eta * eta * mass / rho_L);
   double h_R = sqrt(eta * eta * mass / rho_R);
 
@@ -256,7 +256,7 @@ void init_sod_2d_3(SPHSystem2D *sph, double x_max, double y_max,
   // Macroscopic physical quantities
   double rho_L = 1.0, P_L = 1.0;
   double rho_R = 0.125, P_R = 0.1;
-  double eta = 1.8;
+  double eta = 1.3;
 
   double x_mid = x_max / 2.0;
 
