@@ -250,7 +250,7 @@ double step_euler_xreflective_yperiodic(SPHSystem2D *sph,
   }
 
   // update hydrodynamic quantities for next step
-  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
+  update_adaptive_h_2d(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
@@ -310,7 +310,7 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
   sph->time += dt;
 
   // Update hydrodynamic quantities at new position
-  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
+  update_adaptive_h_2d(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
