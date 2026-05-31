@@ -66,10 +66,8 @@ void free_sph_system(SPHSystem *sph)
     }
 
     free(sph->particles);
-
     sph->particles = NULL;
 
-    sph->particles = NULL;
     sph->N = 0;
 
     sph->time  = 0.0;
