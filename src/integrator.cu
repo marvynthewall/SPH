@@ -1,9 +1,2 @@
-# include "sph_system.h"
+#include "integrator.cuh"
 
-
-
-int main( void ){
-
-
-
-}
