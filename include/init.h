@@ -13,5 +13,6 @@ void init_sph_parameter(SPHSystem2D *sph);
 void calculate_position(int N, double* pos_x, double* pos_y, double x_min, double x_max, double y_min, double y_max, char tail);
 void init_sod_2d_2(SPHSystem2D *sph, double x, double y, double mass);
 void init_sod_2d_3(SPHSystem2D *sph, double x, double y, double mass);
+void init_KH(SPHSystem2D *sph, int nx, int ny);
 
 #endif

@@ -19,4 +19,8 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
                                                double (*calculate_time_step)(SPHSystem2D *),
                                                void (*compute_forces)(SPHSystem2D *));
 
+double step_leapfrog_kdk_xperiodic_yperiodic(SPHSystem2D *sph,
+                                             double (*calculate_time_step)(SPHSystem2D *),
+                                             void (*compute_forces)(SPHSystem2D *));
+
 #endif

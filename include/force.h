@@ -6,5 +6,6 @@
 void compute_pressure_soundspeed_factor(SPHSystem2D *sph);
 void compute_force(SPHSystem2D *sph);
 void compute_force_xreflective_yperiodic(SPHSystem2D *sph);
+void compute_force_xperiodic_yperiodic(SPHSystem2D *sph);
 
 #endif

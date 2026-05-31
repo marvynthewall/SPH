@@ -332,3 +332,72 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
   }
   return dt;
 }
+
+double step_leapfrog_kdk_xperiodic_yperiodic(SPHSystem2D *sph,
+                         double (*calculate_time_step)(SPHSystem2D *),
+                         void (*compute_forces)(SPHSystem2D *)) {
+  double dt = calculate_time_step(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  // Kick: half-step velocity and internal energy update
+  for (int i = 0; i < sph->N; i++) {
+
+    sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
+    sph->particles[i].vy += 0.5 * sph->particles[i].ay * dt;
+
+    sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
+
+    if (sph->particles[i].u < 1e-10) {
+      sph->particles[i].u = 1e-10;
+    }
+  }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  // Drift: full-step position update
+  for (int i = 0; i < sph->N; i++) {
+
+    sph->particles[i].x += sph->particles[i].vx * dt;
+    sph->particles[i].y += sph->particles[i].vy * dt;
+
+    // X-Periodic
+    if (sph->particles[i].x >= sph->box_size_x)
+      sph->particles[i].x -= sph->box_size_x;
+    if (sph->particles[i].x < 0.0)
+      sph->particles[i].x += sph->box_size_x;
+
+    // Y-Periodic
+    if (sph->particles[i].y >= sph->box_size_y)
+      sph->particles[i].y -= sph->box_size_y;
+    if (sph->particles[i].y < 0.0)
+      sph->particles[i].y += sph->box_size_y;
+  }
+
+  sph->time += dt;
+
+  // Update hydrodynamic quantities at new position
+  update_adaptive_h(sph, 20, 1e-4, compute_density_xperiodic_yperiodic);
+  compute_density_xperiodic_yperiodic(sph);
+  compute_pressure_soundspeed_factor(sph);
+  compute_forces(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  // Kick: another half-step velocity and internal energy update
+  for (int i = 0; i < sph->N; i++) {
+
+    sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
+    sph->particles[i].vy += 0.5 * sph->particles[i].ay * dt;
+
+    sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
+
+    if (sph->particles[i].u < 1e-10) {
+      sph->particles[i].u = 1e-10;
+    }
+  }
+  return dt;
+}

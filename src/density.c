@@ -168,3 +168,46 @@ void compute_density_xreflective_yperiodic(SPHSystem2D *sph) {
         p_i->drho_dh = drhodh;
     }
 }
+
+void compute_density_xperiodic_yperiodic(SPHSystem2D *sph) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        double local_rho = 0.0;
+        double drhodh = 0.0;
+        Particle *p_i = &sph->particles[i];
+
+        for (int j = 0; j < sph->N; j++) {
+            Particle *p_j = &sph->particles[j];
+
+            double dx = p_i->x - p_j->x;
+            double dy = p_i->y - p_j->y;
+
+            // X-Periodic
+            if (dx > 0.5 * sph->box_size_x)
+                dx -= sph->box_size_x;
+            else if (dx < -0.5 * sph->box_size_x)
+                dx += sph->box_size_x;
+
+            // Y-Periodic
+            if (dy > 0.5 * sph->box_size_y)
+                dy -= sph->box_size_y;
+            else if (dy < -0.5 * sph->box_size_y)
+                dy += sph->box_size_y;
+
+            double r = sqrt(dx * dx + dy * dy);
+
+            if (r <= p_i->h) {
+                double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+                cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+            }
+        }
+
+        p_i->rho = local_rho;
+        p_i->drho_dh = drhodh;
+    }
+}
+

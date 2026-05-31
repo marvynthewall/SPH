@@ -252,3 +252,79 @@ void compute_force_xreflective_yperiodic(SPHSystem2D *sph) {
     }
   }
 }
+
+void compute_force_xperiodic_yperiodic(SPHSystem2D *sph) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    sph->particles[i].ax = 0.0;
+    sph->particles[i].ay = 0.0;
+    sph->particles[i].dudt = 0.0;
+  }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+
+    for (int j = 0; j < sph->N; j++) {
+      if (i == j) continue;
+      Particle *p_j = &sph->particles[j];
+
+      double dx = p_i->x - p_j->x;
+      if (dx > 0.5 * sph->box_size_x) dx -= sph->box_size_x;
+      else if (dx < -0.5 * sph->box_size_x) dx += sph->box_size_x;
+
+      double dy = p_i->y - p_j->y;
+      if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+      else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
+
+      double r = sqrt(dx * dx + dy * dy);
+      double max_h = fmax(p_i->h, p_j->h);
+      
+      if (r < 1e-12 || r > max_h) continue;
+
+      double dvx = p_i->vx - p_j->vx;
+      double dvy = p_i->vy - p_j->vy;
+
+      double W_i, dWdr_i, dWdh_i;
+      cubic_spline_kernel_2d(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
+      double W_j, dWdr_j, dWdh_j;
+      cubic_spline_kernel_2d(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
+
+      double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr_i;
+      double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) * dWdr_j;
+
+      double scalar_force = p_j->mass * (term_i + term_j);
+
+      double ax = -scalar_force * (dx / r);
+      double ay = -scalar_force * (dy / r);
+
+      p_i->ax += ax;
+      p_i->ay += ay;
+
+      double inner_product_v_dW_i = dvx * (dWdr_i * dx / r) + dvy * (dWdr_i * dy / r);
+      double inner_product_v_dW_j = dvx * (dWdr_j * dx / r) + dvy * (dWdr_j * dy / r);
+      p_i->dudt += p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * p_j->mass * inner_product_v_dW_i;
+
+      double r_dot_v = dx * dvx + dy * dvy;
+      if (r_dot_v < 0.0) {
+        double h_ij = (p_i->h + p_j->h) / 2.0;
+        double mu_ij = h_ij * r_dot_v / (r * r + sph->epsilon * (h_ij * h_ij));
+        double c_ij = (p_i->cs + p_j->cs) / 2.0;
+        double rho_ij = (p_i->rho + p_j->rho) / 2.0;
+        double PI_ij = (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
+
+        double avg_inner = (inner_product_v_dW_i + inner_product_v_dW_j) / 2.0;
+        p_i->dudt += p_j->mass / 2.0 * PI_ij * avg_inner;
+
+        double Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dx / r);
+        double Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dy / r);
+        p_i->ax += Vax;
+        p_i->ay += Vay;
+      }
+    }
+  }
+}
