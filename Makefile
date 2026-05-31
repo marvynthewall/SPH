@@ -36,14 +36,6 @@ else
 endif
 
 
-
-
-# ----------------------------
-# Linker flags
-# ----------------------------
-LDFLAGS = -lm $(OPENFLAG)
-
-
 # ----------------------------
 # Directories
 # ----------------------------
@@ -95,37 +87,52 @@ $(BIN_DIR):
 # Main program
 # ----------------------------
 $(BIN_DIR)/sod_2d: $(OBJS) $(BUILD_DIR)/sod_2d.o | $(BIN_DIR)
+ifeq ($(GPU),1)
+	$(NVCC) $(NVCCFLAGS) -o $@ $(OBJS) $(BUILD_DIR)/sod_2d.o $(LDFLAGS)
+else
 	$(CC) ${CFLAGS} -o $@ $(OBJS) $(BUILD_DIR)/sod_2d.o $(LDFLAGS)
+endif
 
 
 # ----------------------------
 # Compile core source files
 # ----------------------------
-$(BUILD_DIR)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) ${CFLAGS} -c src/sph_system.c -o $@
 
-$(BUILD_DIR)/kernel.o: src/kernel.c include/kernel.h include/sph_system.h | $(BUILD_DIR)
-	$(CC) ${CFLAGS} -c src/kernel.c -o $@
+# For GPU compilation
+ifeq ($(GPU),1)
+$(BUILD_DIR)/density.o: src/density.cu include/density.cuh include/sph_system.h | $(BUILD_DIR)
+	$(NVCC) $(NVCCFLAGS) -c src/density.cu -o $@
 
+$(BUILD_DIR)/force.o: src/force.cu include/force.cuh include/sph_system.h | $(BUILD_DIR)
+	$(NVCC) $(NVCCFLAGS) -c src/force.cu -o $@
+
+$(BUILD_DIR)/integrator.o: src/integrator.cu include/integrator.cuh include/sph_system.h | $(BUILD_DIR)
+	$(NVCC) $(NVCCFLAGS) -c src/integrator.cu -o $@
+# For standard & OpenMP CPU compilation
+else
 $(BUILD_DIR)/density.o: src/density.c include/density.h include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c src/density.c -o $@
 
 $(BUILD_DIR)/force.o: src/force.c include/force.h include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c src/force.c -o $@
 
+$(BUILD_DIR)/integrator.o: src/integrator.c include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c src/integrator.c -o $@
+endif
+
+
+# No matter for CPU standard, OpenMP or GPU
+$(BUILD_DIR)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c src/sph_system.c -o $@
+
 $(BUILD_DIR)/init.o: src/init.c include/init.h include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c src/init.c -o $@
 
-$(BUILD_DIR)/integrator.o: src/integrator.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c src/integrator.c -o $@
+$(BUILD_DIR)/kernel.o: src/kernel.c include/kernel.h include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c src/kernel.c -o $@
 
 $(BUILD_DIR)/io.o: src/io.c include/io.h include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c src/io.c -o $@
-
-
-# For GPU compilation
-$(BUILD_DIR)/cuda_kernels.o: src/cuda_kernels.cu include/sph_system.h | $(BUILD_DIR)
-	$(NVCC) $(NVCCFLAGS) -c src/cuda_kernels.cu -o $@
 
 
 # ----------------------------
@@ -139,7 +146,6 @@ $(BUILD_DIR)/sod_2d.o: examples/sod_2d.c include/sph_system.h | $(BUILD_DIR)
 # ----------------------------
 run: $(BIN_DIR)/sod_2d
 	./$(BIN_DIR)/sod_2d
-	cd $(BIN_DIR) && ./sod_2d
 
 # ----------------------------
 # Animation
@@ -197,4 +203,4 @@ clean:
 	       tests/test_force \
 	       tests/test_init \
            tests/test_integrator \
-		   bin/output*.csv \ 
+		   bin/output*.csv
