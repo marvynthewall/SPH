@@ -4,7 +4,7 @@
 // this is for 1-layer loop
 // factor, const = 2.0 for 2D, 3.0 for 3D
 // Eq(23)
-void compute_pressure_soundspeed_factor(SPHSystem2D *sph) {
+void compute_pressure_soundspeed_factor(SPHSystem *sph) {
   double GG1 = sqrt(GAMMA * (GAMMA - 1));
   for (int i = 0; i < sph->N; i++) {
     sph->particles[i].pressure =
@@ -25,7 +25,7 @@ void compute_pressure_soundspeed_factor(SPHSystem2D *sph) {
 // when compiling, compiler can discard this after compiling this part, and optimize it directly. 
 // inline is only a "suggestion", especially in O3, sometimes it changes idea, since this is a long function
 // however in our simulation, this need to be inline!
-__attribute__((always_inline)) static inline void compute_pairwise_physics(Particle *p_i, Particle *p_j, SPHSystem2D *sph) {
+__attribute__((always_inline)) static inline void compute_pairwise_physics(Particle *p_i, Particle *p_j, SPHSystem *sph) {
     double dx = p_i->x - p_j->x;
     double dy = p_i->y - p_j->y;
     double r = sqrt(dx * dx + dy * dy);
@@ -102,7 +102,7 @@ __attribute__((always_inline)) static inline void compute_pairwise_physics(Parti
 }
 
 
-void compute_force(SPHSystem2D *sph) {
+void compute_force(SPHSystem *sph) {
 #ifdef OMP
 #pragma omp parallel for
 #endif
@@ -136,7 +136,7 @@ void compute_force(SPHSystem2D *sph) {
 }
 
 // Computing force, symmetry 2-layers loop
-void compute_force_xreflective_yperiodic(SPHSystem2D *sph) {
+void compute_force_xreflective_yperiodic(SPHSystem *sph) {
   for (int i = 0; i < sph->N; i++) {
     sph->particles[i].ax = 0.0;
     sph->particles[i].ay = 0.0;
@@ -253,7 +253,7 @@ void compute_force_xreflective_yperiodic(SPHSystem2D *sph) {
   }
 }
 
-void compute_force_xperiodic_yperiodic(SPHSystem2D *sph) {
+void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif

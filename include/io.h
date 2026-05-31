@@ -7,7 +7,7 @@
  * id, x, y, vx, vy, ax, ay, m, rho, P, u, h
  */
 
-void write_csv(SPHSystem2D * sph ,const char * filename);
+void write_csv(SPHSystem * sph ,const char * filename);
 
 
 #endif

@@ -5,7 +5,7 @@
 #endif
 
 
-double compute_timestep(SPHSystem2D *sph)
+double compute_timestep(SPHSystem *sph)
 {
     double dt_min = DBL_MAX;
     double cfl = sph->cfl;
@@ -34,7 +34,7 @@ double compute_timestep(SPHSystem2D *sph)
 }
 
 
-double compute_timestep_signal_velocity(SPHSystem2D *sph)
+double compute_timestep_signal_velocity(SPHSystem *sph)
 {
     double dt_min = DBL_MAX;
     double cfl = sph->cfl;
@@ -110,9 +110,9 @@ double compute_timestep_signal_velocity(SPHSystem2D *sph)
 
 
 double step_euler(
-    SPHSystem2D *sph,
-    double (*calculate_timep_step)(SPHSystem2D *),
-    void (*compute_forces)(SPHSystem2D *)
+    SPHSystem *sph,
+    double (*calculate_timep_step)(SPHSystem *),
+    void (*compute_forces)(SPHSystem *)
 )
 {
     double dt = calculate_timep_step(sph);
@@ -149,9 +149,9 @@ double step_euler(
 }
 
 double step_leapfrog_kdk(
-    SPHSystem2D *sph,
-    double (*calculate_time_step)(SPHSystem2D *),
-    void (*compute_forces)(SPHSystem2D *)
+    SPHSystem *sph,
+    double (*calculate_time_step)(SPHSystem *),
+    void (*compute_forces)(SPHSystem *)
 )
 {
     double dt = calculate_time_step(sph);
@@ -208,9 +208,9 @@ double step_leapfrog_kdk(
 
 
 
-double step_euler_xreflective_yperiodic(SPHSystem2D *sph,
-                  double (*calculate_timep_step)(SPHSystem2D *),
-                  void (*compute_forces)(SPHSystem2D *)) {
+double step_euler_xreflective_yperiodic(SPHSystem *sph,
+                  double (*calculate_timep_step)(SPHSystem *),
+                  void (*compute_forces)(SPHSystem *)) {
   double dt = calculate_timep_step(sph);
 
 #ifdef _OPENMP
@@ -250,7 +250,7 @@ double step_euler_xreflective_yperiodic(SPHSystem2D *sph,
   }
 
   // update hydrodynamic quantities for next step
-  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
+  update_adaptive_h_2d(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
@@ -260,9 +260,9 @@ double step_euler_xreflective_yperiodic(SPHSystem2D *sph,
   return dt;
 }
 
-double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
-                         double (*calculate_time_step)(SPHSystem2D *),
-                         void (*compute_forces)(SPHSystem2D *)) {
+double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem *sph,
+                         double (*calculate_time_step)(SPHSystem *),
+                         void (*compute_forces)(SPHSystem *)) {
   double dt = calculate_time_step(sph);
 
 #ifdef _OPENMP
@@ -310,7 +310,7 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
   sph->time += dt;
 
   // Update hydrodynamic quantities at new position
-  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
+  update_adaptive_h_2d(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
@@ -333,9 +333,9 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
   return dt;
 }
 
-double step_leapfrog_kdk_xperiodic_yperiodic(SPHSystem2D *sph,
-                         double (*calculate_time_step)(SPHSystem2D *),
-                         void (*compute_forces)(SPHSystem2D *)) {
+double step_leapfrog_kdk_xperiodic_yperiodic(SPHSystem *sph,
+                         double (*calculate_time_step)(SPHSystem *),
+                         void (*compute_forces)(SPHSystem *)) {
   double dt = calculate_time_step(sph);
 
 #ifdef _OPENMP
@@ -379,7 +379,7 @@ double step_leapfrog_kdk_xperiodic_yperiodic(SPHSystem2D *sph,
   sph->time += dt;
 
   // Update hydrodynamic quantities at new position
-  update_adaptive_h(sph, 20, 1e-4, compute_density_xperiodic_yperiodic);
+  update_adaptive_h_2d(sph, 20, 1e-4, 1.8, compute_density_xperiodic_yperiodic);
   compute_density_xperiodic_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);

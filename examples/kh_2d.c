@@ -16,7 +16,7 @@ int main(int argc, char *argv[]) {
     }
   }
 
-  SPHSystem2D sph;
+  SPHSystem sph;
   
   // Initialize Kelvin-Helmholtz instability setup
   init_KH(&sph, nx, ny);

@@ -24,13 +24,13 @@ typedef struct {
     int id;
 
     // position
-    double x, y;
+    double x, y, z;
 
     // velocity
-    double vx, vy;
+    double vx, vy, vz;
 
     // acceleration
-    double ax, ay;
+    double ax, ay, az;
 
     // specific internal energy evolution
     double dudt;
@@ -52,6 +52,7 @@ typedef struct {
 
 /* SPH System Structure */
 typedef struct {
+    int dim;
 
     int N;
 
@@ -65,6 +66,7 @@ typedef struct {
     // domain size
     double box_size_x;
     double box_size_y;
+    double box_size_z;
 
     // 0.1 - 0.3 from paper
     double cfl;
@@ -73,12 +75,12 @@ typedef struct {
     double epsilon;
     double alpha;
     double beta;
-} SPHSystem2D;
+} SPHSystem;
 
 
 /* memory management */
-void allocate_sph_system(SPHSystem2D *sph, int N);
-void free_sph_system(SPHSystem2D *sph);
+void allocate_sph_system(SPHSystem *sph, int N);
+void free_sph_system(SPHSystem *sph);
 
 
 /* module headers */
