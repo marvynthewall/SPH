@@ -1,6 +1,6 @@
 #include "sph_system.h"
 
-int check_particle_number(const SPHSystem2D *sph, int nx, int ny,
+int check_particle_number(const SPHSystem *sph, int nx, int ny,
                           const char *func_name) {
   if (sph == NULL || sph->particles == NULL) {
     fprintf(stderr, "Error in %s: SPH system is not allocated.\n", func_name);
@@ -18,7 +18,7 @@ int check_particle_number(const SPHSystem2D *sph, int nx, int ny,
   return N_expected;
 }
 
-void init_uniform_box(SPHSystem2D *sph, int nx, int ny) {
+void init_uniform_box(SPHSystem *sph, int nx, int ny) {
   int N_expected = check_particle_number(sph, nx, ny, "init_uniform_box");
 
   double xmin = 0.0;
@@ -64,7 +64,7 @@ void init_uniform_box(SPHSystem2D *sph, int nx, int ny) {
   }
 }
 
-void init_sod_2d(SPHSystem2D *sph, int nx, int ny) {
+void init_sod_2d(SPHSystem *sph, int nx, int ny) {
   check_particle_number(sph, nx, ny, "init_sod_2d");
 
   double xmin = 0.0;
@@ -124,7 +124,7 @@ void init_sod_2d(SPHSystem2D *sph, int nx, int ny) {
   }
 }
 
-void init_sph_parameter(SPHSystem2D *sph) {
+void init_sph_parameter(SPHSystem *sph) {
   // Viscosity
   // epsilon is usually set to 0.01, to prevent the too-close issue.
   // 0.5 <= alpha  <= 1.0
@@ -184,7 +184,7 @@ void calculate_position(int N, double *pos_x, double *pos_y, double x_min,
 }
 
 // x, y is the physical size of the boxes
-void init_sod_2d_2(SPHSystem2D *sph, double x, double y, double mass) {
+void init_sod_2d_2(SPHSystem *sph, double x, double y, double mass) {
   // check_particle_number(sph, nx, ny, "init_sod_2d");
   double gamma = 1.4;
 
@@ -249,7 +249,7 @@ void init_sod_2d_2(SPHSystem2D *sph, double x, double y, double mass) {
   }
 }
 
-void init_sod_2d_3(SPHSystem2D *sph, double x_max, double y_max,
+void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
                    double target_mass) {
   double gamma = 1.4;
 

@@ -1,5 +1,5 @@
 #include "density.h"
-void update_adaptive_h_2d(SPHSystem2D *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem2D *))
+void update_adaptive_h_2d(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *))
 {
     if (sph == NULL || sph->particles == NULL) {
         fprintf(stderr, "Error: invalid SPH system in update_adaptive_h_2d.\n");
@@ -145,8 +145,7 @@ void update_adaptive_h_3d(SPHSystem2D *sph, int max_iter, double tol, double eta
     }
 }
 
-
-void check_adaptive_h(SPHSystem2D *sph, double eta, double tol)
+void check_adaptive_h(SPHSystem *sph, double eta, double tol)
 {
     if (sph == NULL || sph->particles == NULL) {
         fprintf(stderr, "Error: invalid SPH system in check_adaptive_h.\n");
@@ -176,7 +175,7 @@ void check_adaptive_h(SPHSystem2D *sph, double eta, double tol)
 }
 
 
-void compute_density(SPHSystem2D *sph){
+void compute_density(SPHSystem *sph){
 /*
  * OpenMP Parallelization Technique:
  * Adding #pragma omp parallel for will automatically split the loop
@@ -224,7 +223,7 @@ void compute_density(SPHSystem2D *sph){
   }
 }
 
-void compute_density_xreflective_yperiodic(SPHSystem2D *sph) {
+void compute_density_xreflective_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif

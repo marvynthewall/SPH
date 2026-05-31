@@ -4,7 +4,7 @@ int main()
 {
     printf("========== SPH Density Test ==========\n");
 
-    SPHSystem2D sph;
+    SPHSystem sph;
 
     allocate_sph_system(&sph, 2);
 

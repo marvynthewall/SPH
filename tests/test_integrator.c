@@ -10,7 +10,7 @@
 void test_timestep_single_particle(void)
 {
 
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 1);
 
     sph.particles[0].h  = 1.0;
@@ -34,7 +34,7 @@ void test_timestep_single_particle(void)
 
 void test_timestep_two_particles_static(void)
 {
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 2);
 
     sph.cfl = 0.1;
@@ -63,7 +63,7 @@ void test_timestep_two_particles_static(void)
 
 void test_timestep_two_particles_approaching(void)
 {
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 2);
 
     sph.cfl = 0.1;
@@ -92,7 +92,7 @@ void test_timestep_two_particles_approaching(void)
 
 
 
-void init_single_particle_test(SPHSystem2D *sph)
+void init_single_particle_test(SPHSystem *sph)
 {
     allocate_sph_system(sph, 1);
 
@@ -119,7 +119,7 @@ void init_single_particle_test(SPHSystem2D *sph)
 }
 
 
-void compute_forces_dummy(SPHSystem2D *sph)
+void compute_forces_dummy(SPHSystem *sph)
 {
     for (int i = 0; i < sph->N; i++) {
         sph->particles[i].ax = 2.0;
@@ -157,7 +157,7 @@ int main(int argc, char **argv)
 
     printf("========== 2 SPH Integrator Unit Tests ==========\n");
 
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 1);
 
 

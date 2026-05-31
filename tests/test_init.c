@@ -4,7 +4,7 @@
 
 
 int main(int argc, char *argv[]) {
-    SPHSystem2D sph;
+    SPHSystem sph;
 
     int nx = 20; 
     int ny = 20;

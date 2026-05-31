@@ -3,7 +3,7 @@
 
 
 void test_pressure_soundspeed() {
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 1);
     sph.particles[0].rho = 1.0;
     sph.particles[0].u = 1.0;
@@ -26,7 +26,7 @@ void test_pressure_soundspeed() {
 }
 
 void test_force_two_particle_head_on_collision(void){
-    SPHSystem2D sph;
+    SPHSystem sph;
     allocate_sph_system(&sph, 2);
     
     for (int i = 0; i < 2; i++) {
