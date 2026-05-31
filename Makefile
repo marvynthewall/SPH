@@ -50,7 +50,7 @@ OBJS_GPU = $(foreach s, $(SRCS_COMMON), $(BUILD_GPU)/$(s).o) \
 # ----------------------------
 # Default target
 # ----------------------------
-all: cpu
+all: cpu kh_2d
 
 cpu: $(BIN_DIR)/sod_2d_cpu
 	@echo "[Standard CPU Compilation]"
@@ -88,10 +88,18 @@ $(BIN_DIR)/sod_2d_omp: $(OBJS_OMP) $(BUILD_OMP)/sod_2d.o | $(BIN_DIR)
 $(BIN_DIR)/sod_2d_gpu: $(OBJS_GPU) $(BUILD_GPU)/sod_2d.o | $(BIN_DIR)
 	$(NVCC) $(NVCCFLAGS) -o $@ $^ $(LDFLAGS_GPU)
 
+kh_2d: $(BIN_DIR)/kh_2d
+
+$(BIN_DIR)/kh_2d: $(OBJS_CPU) $(BUILD_CPU)/kh_2d.o | $(BIN_DIR)
+	$(CC_CPU) $(CFLAGS_CPU) -o $@ $^ $(LDFLAGS_CPU)
+
 # ----------------------------
 # Compile examples
 # ----------------------------
 $(BUILD_CPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_CPU)
+	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
+
+$(BUILD_CPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
 
 $(BUILD_OMP)/sod_2d.o: examples/sod_2d.c | $(BUILD_OMP)
@@ -239,6 +247,7 @@ clean:
 	       bin/sod_2d_cpu  \
 	       bin/sod_2d_omp  \
 	       bin/sod_2d_gpu  \
+	       bin/kh_2d       \
 	       bin/output*.csv \
 	       tests/test_density    \
 	       tests/test_force      \
