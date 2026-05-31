@@ -1,40 +1,151 @@
 #include "density.h"
-void update_adaptive_h(SPHSystem2D *sph, int max_iter, double tol,
-                       void (*compute_density_fn)(SPHSystem2D *))
+void update_adaptive_h_2d(SPHSystem2D *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem2D *))
 {
-    const double eta = 2.3;
+    if (sph == NULL || sph->particles == NULL) {
+        fprintf(stderr, "Error: invalid SPH system in update_adaptive_h_2d.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (eta <= 0.0 || !isfinite(eta)) {
+        fprintf(stderr, "Error: invalid eta in update_adaptive_h_2d. eta=%e\n", eta);
+        exit(EXIT_FAILURE);
+    }
 
     for (int iter = 0; iter < max_iter; iter++) {
         compute_density_fn(sph);
 
         double max_change = 0.0;
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(max:max_change) schedule(static)
+#endif
+        /*Newton iteration: Repeatedly update h until the maximum relative change of h is small enough.*/
         for (int i = 0; i < sph->N; i++) {
+
             Particle *p_i = &sph->particles[i];
+            /*
+             * 2D adaptive h target:
+             *
+             *     rho_i * h_i^2 = eta^2 * m_i
+             *
+             * Define:
+             *
+             *     C = eta^2 * m_i
+             */
             double C = eta * eta * p_i->mass;
+
+            double h = p_i->h;
+            double rho = p_i->rho;
+            double drhodh = p_i->drho_dh;
+            /*
+             * Newton method solves:
+             *
+             *     F(h) = rho(h) * h^2 - C = 0
+             *
+             * Its derivative is:
+             *
+             *     dF/dh = (drho/dh) * h^2 + 2 * rho * h
+             */
+            double F = rho * h * h - C;
+            double dFdh = drhodh * h * h + 2.0 * rho * h;
+
+            /* Avoid division by a very small number.*/
+            if (fabs(dFdh) < 1.0e-14) {continue;}
+
+            double h_new = h - F / dFdh;
+
+            /*Reject invalid smoothing length.*/
+            if (!isfinite(h_new) || h_new <= 0.0) {continue;}
+
+            /*Compute relative change of h for convergence check.*/
+            double change = fabs(h_new - h) / h;
+
+            if (change > max_change) {max_change = change;}
+
+            p_i->h = h_new;
+        }
+        /*
+         * If the largest relative change is smaller than tol,
+         * the adaptive h iteration is considered converged.
+         */
+        if (max_change < tol) {printf("adaptive h 2D converged at iter: %d, eta = %.3f\n", iter, eta);break;}
+    }
+}
+
+void update_adaptive_h_3d(SPHSystem2D *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem2D *))
+{
+    if (sph == NULL || sph->particles == NULL) {
+        fprintf(stderr, "Error: invalid SPH system in update_adaptive_h_3d.\n");
+        exit(EXIT_FAILURE);
+    }
+
+    if (eta <= 0.0 || !isfinite(eta)) {
+        fprintf(stderr, "Error: invalid eta in update_adaptive_h_3d. eta=%e\n", eta);
+        exit(EXIT_FAILURE);
+    }
+
+    for (int iter = 0; iter < max_iter; iter++) {
+
+        compute_density_fn(sph);
+
+        double max_change = 0.0;
+
+#ifdef _OPENMP
+#pragma omp parallel for reduction(max:max_change) schedule(static)
+#endif
+        /*Newton iteration: Repeatedly update h until the maximum relative change of h is small enough.*/
+        for (int i = 0; i < sph->N; i++) {
+
+            Particle *p_i = &sph->particles[i];
+            /*
+             * 3D adaptive h target:
+             *
+             *     rho_i * h_i^3 = eta^3 * m_i
+             *
+             * Define:
+             *
+             *     C = eta^3 * m_i
+             */
             double h = p_i->h;
             double rho = p_i->rho;
             double drhodh = p_i->drho_dh;
 
-            double F = rho * h * h - C;
-            double dFdh = drhodh * h * h + 2.0 * rho * h;
+            /*
+             * Newton method solves:
+             *
+             *     F(h) = rho(h) * h^3 - C = 0
+             *
+             * Its derivative is:
+             *
+             *     dF/dh = (drho/dh) * h^3 + 3 * rho * h * h
+             */
+            double C = eta * eta * eta * p_i->mass;
+            double F = rho * h * h * h - C;
+            double dFdh = drhodh * h * h * h + 3.0 * rho * h * h;
 
-            if (fabs(dFdh) < 1.0e-14) continue;
+            /* Avoid division by a very small number.*/
+            if (fabs(dFdh) < 1.0e-14) {continue;}
 
             double h_new = h - F / dFdh;
-            if (!isfinite(h_new) || h_new <= 0.0) continue;
 
-            max_change = fmax(max_change, fabs(h_new - h) / h);
+            /*Reject invalid smoothing length.*/
+            if (!isfinite(h_new) || h_new <= 0.0) {continue;}
+
+            /*Compute relative change of h for convergence check.*/
+            double change = fabs(h_new - h) / h;
+            if (change > max_change) {max_change = change;}
+
             p_i->h = h_new;
         }
-
-        if (max_change < tol){
-          printf("iter : %d\n", iter);
-          break;
-        }
-          
+        /*
+         * If the largest relative change is smaller than tol,
+         * the adaptive h iteration is considered converged.
+         */
+        if (max_change < tol) {printf("adaptive h 3D converged at iter: %d, eta = %.3f\n", iter, eta);break;}
     }
 }
+
+
 void check_adaptive_h(SPHSystem2D *sph, double eta, double tol)
 {
     if (sph == NULL || sph->particles == NULL) {
