@@ -5,13 +5,13 @@ int main(int argc, char *argv[]) {
   printf("   SPH 模擬程式啟動中...             \n");
   printf("====================================\n");
   // 1. 設定預設值
-  const char *output_filename = "output_0000.csv";
+  // const char *output_filename = "output_0000.csv";
   double mass = 0.001; // 預設質量
 
   // 2. 解析命令列參數
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
-      output_filename = argv[i + 1];
+      // output_filename = argv[i + 1];
       i++; // 跳過已讀取的檔名
     } else if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
       mass = atof(argv[i + 1]); // 將字串轉換為 double
@@ -55,21 +55,21 @@ int main(int argc, char *argv[]) {
   printf("\n初始化完成,開始模擬...\n");
 
   while (t < t_end) {
-    if (t >= next_output_time) {
-      char filename[256];
-      sprintf(filename, "output_%04d.csv", output_step);
-      write_csv(&sph, filename);
-      printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
-             filename);
-      output_step++;
-      next_output_time += dt_output;
-    }
+      if (t >= next_output_time) {
+          char filename[256];
+          sprintf(filename, "output_%04d.csv", output_step);
+          write_csv(&sph, filename);
+          printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
+                filename);
+          output_step++;
+          next_output_time += dt_output;
+      }
 
-    // integrate one step
-    double dt = step_leapfrog_kdk_xreflective_yperiodic(
-        &sph, compute_timestep, compute_force_xreflective_yperiodic);
-    t += dt;
-    step++;
+      // integrate one step
+      double dt = step_leapfrog_kdk_xreflective_yperiodic(
+            &sph, compute_timestep, compute_force_xreflective_yperiodic);
+      t += dt;
+      step++;
   }
 
   printf("\n模擬完成 ...\n");
