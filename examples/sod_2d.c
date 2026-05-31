@@ -14,6 +14,8 @@ int main(int argc, char *argv[]) {
   char *mass_c = "0.001";
   double x = 5.0;
   char *x_c = "5.0";
+  double t_end = 5.0;
+  char *t_c = "5.0";
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
@@ -24,6 +26,11 @@ int main(int argc, char *argv[]) {
     else if (strcmp(argv[i], "-x") == 0 && i + 1 < argc) {
       x_c = argv[i+1];
       x = atof(argv[i + 1]); 
+      i++;                      
+    }
+    else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
+      t_c = argv[i+1];
+      t_end = atof(argv[i + 1]); 
       i++;                      
     }
     // 新增 -o 參數的判斷
@@ -40,7 +47,7 @@ int main(int argc, char *argv[]) {
   if (custom_folder_set == 0){
     snprintf(output_folder, sizeof(output_folder), "sod_default_folder");
   }
-  snprintf(output_folder, sizeof(output_folder), "sod_m%s_x%s", mass_c, x_c);
+  snprintf(output_folder, sizeof(output_folder), "sod_m%s_x%s_t%s", mass_c, x_c, t_c);
   printf("Output will be saved to: %s\n", output_folder);
 
   // 嘗試建立資料夾，0777 是基本的讀寫權限設定
@@ -80,6 +87,7 @@ int main(int argc, char *argv[]) {
   init_sod_2d_3(&sph, x, y, mass);
 
   // Initialize physical parameters
+  sph.gamma = 1.4;
   sph.cfl = 0.3;
   sph.alpha = 1.0;
   sph.beta = 2.0;
@@ -91,7 +99,6 @@ int main(int argc, char *argv[]) {
   compute_force_xreflective_yperiodic(&sph);
 
   double t = 0.0;
-  double t_end = 5.0;
   int step = 0;
   int output_step = 0;
   double dt_output = 0.01;

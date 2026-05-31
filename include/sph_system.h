@@ -53,6 +53,7 @@ typedef struct {
 /* SPH System Structure */
 typedef struct {
     int dim;
+    double gamma;
 
     int N;
 
