@@ -1,10 +1,15 @@
 #include "sph_system.h"
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 // Usage
 // ./test_integrator [euler/kdk]
 
 
 void test_timestep_single_particle(void)
 {
+
     SPHSystem2D sph;
     allocate_sph_system(&sph, 1);
 
@@ -128,6 +133,22 @@ void compute_forces_dummy(SPHSystem2D *sph)
 
 int main(int argc, char **argv)
 {
+
+#ifdef _OPENMP
+    int nthreads = 4;  // default thread number
+
+    if (argc >= 3) {
+        nthreads = atoi(argv[2]);
+    }
+
+    omp_set_num_threads(nthreads);
+
+    printf("OpenMP enabled, using %d threads\n", omp_get_max_threads());
+#else
+    printf("OpenMP disabled, running serial version\n");
+#endif
+
+
     printf("========== 1 SPH Timestep Tests ==========\n");
 
     test_timestep_single_particle();
@@ -185,6 +206,6 @@ int main(int argc, char **argv)
     }
 
     printf("\nAll integrator tests passed.\n");
-
+    free_sph_system(&sph);
     return 0;
 }
