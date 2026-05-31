@@ -64,7 +64,7 @@ OBJS = $(BUILD_DIR)/sph_system.o \
 # ----------------------------
 # Default target
 # ----------------------------
-all: $(BIN_DIR)/sod_2d
+all: $(BIN_DIR)/sod_2d $(BIN_DIR)/kh_2d
 	@if [ "$(GPU)" = "1" ]; then \
 		echo "[CUDA GPU Acceleration Enabled]"; \
 	elif [ "$(OMP)" = "1" ]; then \
@@ -92,6 +92,9 @@ ifeq ($(GPU),1)
 else
 	$(CC) ${CFLAGS} -o $@ $(OBJS) $(BUILD_DIR)/sod_2d.o $(LDFLAGS)
 endif
+
+$(BIN_DIR)/kh_2d: $(OBJS) $(BUILD_DIR)/kh_2d.o | $(BIN_DIR)
+	$(CC) ${CFLAGS} -o $@ $(OBJS) $(BUILD_DIR)/kh_2d.o $(LDFLAGS)
 
 
 # ----------------------------
@@ -140,6 +143,9 @@ $(BUILD_DIR)/io.o: src/io.c include/io.h include/sph_system.h | $(BUILD_DIR)
 # ----------------------------
 $(BUILD_DIR)/sod_2d.o: examples/sod_2d.c include/sph_system.h | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c examples/sod_2d.c -o $@
+
+$(BUILD_DIR)/kh_2d.o: examples/kh_2d.c include/sph_system.h | $(BUILD_DIR)
+	$(CC) $(CFLAGS) -c examples/kh_2d.c -o $@
 
 # ----------------------------
 # Run main program
@@ -198,6 +204,7 @@ $(BUILD_DIR)/test_integrator.o: tests/test_integrator.c include/sph_system.h | $
 clean:
 	rm -rf $(BUILD_DIR)      \
 	       $(BIN_DIR)/sod_2d \
+	       $(BIN_DIR)/kh_2d \
 	       tests/test_kernel \
 	       tests/test_density \
 	       tests/test_force \

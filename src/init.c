@@ -339,3 +339,64 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
     }
   }
 }
+
+void init_KH(SPHSystem *sph, int nx, int ny) {
+  // Use constants from section 5.5 Contact Discontinuities and Fluid
+  // Instabilities
+  double gamma = 5.0 / 3.0;
+  double rho_1 = 1.0;
+  double rho_2 = 2.0;
+  double v_1 = -0.5;
+  double v_2 = 0.5;
+  double P_0 = 2.5;
+
+  double sigma = 0.025;
+  double eta = 1.8; // smoothing factor
+
+  double x_max = 1.0;
+  double y_max = 1.0;
+
+  double dx = x_max / nx;
+  double dy = y_max / ny;
+
+  int N = nx * ny;
+  allocate_sph_system(sph, N);
+
+  sph->box_size_x = x_max;
+  sph->box_size_y = y_max;
+
+  double h_uniform = eta * sqrt(dx * dy);
+
+  int p_idx = 0;
+  for (int i = 0; i < nx; i++) {
+    for (int j = 0; j < ny; j++) {
+      Particle *p = &sph->particles[p_idx++];
+      p->id = p_idx;
+
+      double px = (i + 0.5) * dx;
+      double py = (j + 0.5) * dy;
+
+      // Calculate smoothed profiles (eq. 71)
+      double f = 1.0 / ((1.0 + exp(-2.0 * (py - 0.25) / sigma)) *
+                        (1.0 + exp(2.0 * (py - 0.75) / sigma)));
+
+      double rho = rho_1 + (rho_2 - rho_1) * f;
+      double vx = v_1 + (v_2 - v_1) * f;
+      // trigger instability by y-direction velocity perturbation
+      double vy = 0.01 * sin(4.0 * M_PI * px);
+
+      double mass = rho * dx * dy;
+
+      p->x = px;
+      p->y = py;
+      p->vx = vx;
+      p->vy = vy;
+      p->mass = mass;
+      p->rho = rho;
+      p->pressure = P_0;
+      p->u = P_0 / ((gamma - 1.0) * rho);
+      p->h = h_uniform;
+      p->cs = sqrt(gamma * P_0 / rho);
+    }
+  }
+}
