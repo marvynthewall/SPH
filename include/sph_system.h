@@ -61,6 +61,11 @@ typedef struct {
     double time;
     double dt;
     double t_end;
+
+    // domain size
+    double box_size_x;
+    double box_size_y;
+
     // 0.1 - 0.3 from paper
     double cfl;
 
