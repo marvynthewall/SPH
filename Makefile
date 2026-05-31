@@ -235,6 +235,7 @@ $(BUILD_CPU)/test_integrator.o: tests/test_integrator.c | $(BUILD_CPU)
 # ----------------------------
 clean:
 	rm -rf build/          \
+	       bin/sod_2d      \
 	       bin/sod_2d_cpu  \
 	       bin/sod_2d_omp  \
 	       bin/sod_2d_gpu  \

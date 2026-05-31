@@ -17,48 +17,46 @@ SPH/
 └── bin/
 ```
 ---
-## 純 CPU 設定
-目前 OpenMP & GPU 預設是關閉的：
-```makefile
-make
+## 編譯
+
+### 純 CPU（預設）
+```bash
+make cpu
+# 產生 bin/sod_2d_cpu
 ```
 
-## OpenMP 設定
-
-
-如果需要啟用 OpenMP，當 `OMP=1` 時，Makefile 會使用 `CC = gcc-14`, `OPENFLAG = -fopenmp`：
-```makefile
-make OMP=1
-```
-## GPU 設定
-
-目前 GPU 預設是關閉的：
-
-```makefile
-make
+### OpenMP 多核心平行
+```bash
+make omp
+# 產生 bin/sod_2d_omp
 ```
 
-如果需要啟用 OpenMP，當 `GPU=1` 時，Makefile 會使用 `nvcc`：
-```makefile
-make GPU=1
+### CUDA GPU 加速
+```bash
+make gpu
+# 產生 bin/sod_2d_gpu
 ```
+
+### 三種全部編譯
+```bash
+make cpu omp gpu
+```
+
 ---
+## 執行
 
-## 基本工作流程
-Makefile 會自動建立 `build/`，存放編譯所需檔案，不會 push 到 Github：
-
-### 編譯 bin/sod_2d
+### 執行模擬
 ```bash
-make
+make run_cpu   # 純 CPU
+make run_omp   # OpenMP
+make run_gpu   # GPU
 ```
 
-### 編譯 bin/sod_2d，並且執行模擬
+或直接執行：
 ```bash
-make run
-```
-等同於 make 之後，執行
-```bash
-./bin/sod_2d
+./bin/sod_2d_cpu
+./bin/sod_2d_omp
+./bin/sod_2d_gpu
 ```
 
 ### 若需要測試：
@@ -70,6 +68,7 @@ make test
 ```bash
 make tests/test_density
 ```
+
 
 產生的測試執行檔會在 tests 內，目前測試程式包含：
 
@@ -87,6 +86,14 @@ tests/test_init.c
 tests/test_kernel.c
 ```
 
+
+---
+### 產生動畫
+```bash
+make animate
+```
+
+
 ### 清除編譯檔案
 ```bash
 make clean
@@ -94,10 +101,15 @@ make clean
 
 會刪除所有執行檔，以及編譯相關檔案：
 ```text
-build/
+build
 bin/sod_2d
-tests/test_kernel
+bin/sod_2d_cpu
+bin/sod_2d_omp
+bin/sod_2d_gpu
+bin/output*.csv
 tests/test_density
 tests/test_force
 tests/test_init
+tests/test_kernel
+tests/test_integrator
 ```
