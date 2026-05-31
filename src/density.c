@@ -382,7 +382,7 @@ void compute_density_xperiodic_yperiodic(SPHSystem *sph) {
 
       if (r <= p_i->h) {
         double W = 0.0, dWdr = 0.0, dWdh = 0.0;
-        cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
+        cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
         local_rho += p_j->mass * W;
         drhodh += p_j->mass * dWdh;
       }

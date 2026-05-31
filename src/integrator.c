@@ -544,7 +544,7 @@ double step_leapfrog_kdk_xperiodic_yperiodic(
   sph->time += dt;
 
   // Update hydrodynamic quantities at new position
-  update_adaptive_h_2d(sph, 20, 1e-4, 1.8, compute_density_xperiodic_yperiodic);
+  update_adaptive_h(sph, 20, 1e-4, 1.8, compute_density_xperiodic_yperiodic);
   compute_density_xperiodic_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
