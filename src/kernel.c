@@ -1,6 +1,7 @@
 #include "../include/kernel.h"
 
-void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr, double *dWdh) {
+void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr,
+                            double *dWdh) {
   // q is the dimensionless distance (r/h)
   double q = r / h;
 
@@ -22,18 +23,55 @@ void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr, double 
   //        = (-2/h) * W + k * (dP/dq) * (-r / h^2)
   //        = (-2/h) * W - (r/h) * (k/h) * (dP/dq)
   //        = (-2/h) * W - q * (dW/dr)
-  
 
   // Piecewise polynomial calculation
   if (q >= 0.0 && q <= 0.5) {
     *W = norm * (1.0 - 6.0 * q * q + 6.0 * q * q * q);
     *dWdr = norm_dW * (-12.0 * q + 18.0 * q * q);
-    *dWdh = (-2.0/h) * (*W) - q * (*dWdr);
+    *dWdh = (-2.0 / h) * (*W) - q * (*dWdr);
   } else if (q > 0.5 && q <= 1.0) {
     double diff = 1.0 - q;
     *W = norm * 2.0 * diff * diff * diff;
     *dWdr = norm_dW * (-6.0 * diff * diff);
-    *dWdh = (-2.0/h) * (*W) - q * (*dWdr);
+    *dWdh = (-2.0 / h) * (*W) - q * (*dWdr);
+  } else {
+    // Beyond the influence range (q > 1 or r > h), the weight is 0
+    *W = 0.0;
+    *dWdr = 0.0;
+    *dWdh = 0.0;
+  }
+}
+
+void cubic_spline_kernel_3d(double r, double h, double *W, double *dWdr,
+                            double *dWdh) {
+  // q is the dimensionless distance (r/h)
+  double q = r / h;
+
+  // 3D normalization constant sigma = 8 / pi (Eq.2)
+  // Multiply by 1/h^3 to ensure correct 3D volumetric units and integral
+  double h3 = h * h * h;
+  double norm = 8.0 / (M_PI * h3);
+
+  // Pre-calculate the constant term for the radial derivative
+  // dW/dr = (dW/dq) * (dq/dr) = (dW/dq) * (1/h)
+  double norm_dW = norm / h;
+
+  // Piecewise polynomial calculation
+  if (q >= 0.0 && q <= 0.5) {
+    *W = norm * (1.0 - 6.0 * q * q + 6.0 * q * q * q);
+    *dWdr = norm_dW * (-12.0 * q + 18.0 * q * q);
+
+    // 3D derivative w.r.t h uses -3/h (volumetric scaling) instead of -2/h
+    // (areal)
+    *dWdh = (-3.0 / h) * (*W) - q * (*dWdr);
+
+  } else if (q > 0.5 && q <= 1.0) {
+    double diff = 1.0 - q;
+    *W = norm * 2.0 * diff * diff * diff;
+    *dWdr = norm_dW * (-6.0 * diff * diff);
+
+    *dWdh = (-3.0 / h) * (*W) - q * (*dWdr);
+
   } else {
     // Beyond the influence range (q > 1 or r > h), the weight is 0
     *W = 0.0;
