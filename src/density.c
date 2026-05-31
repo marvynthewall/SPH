@@ -72,7 +72,7 @@ void update_adaptive_h_2d(SPHSystem *sph, int max_iter, double tol, double eta, 
     }
 }
 
-void update_adaptive_h_3d(SPHSystem2D *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem2D *))
+void update_adaptive_h_3d(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *))
 {
     if (sph == NULL || sph->particles == NULL) {
         fprintf(stderr, "Error: invalid SPH system in update_adaptive_h_3d.\n");
