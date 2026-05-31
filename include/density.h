@@ -23,9 +23,11 @@
  * num_particles: Total number of particles
  */
 void compute_density(SPHSystem *sph);
+void compute_density_3d(SPHSystem *sph);
 void compute_density_xreflective_yperiodic(SPHSystem *sph);
+void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph);
 
-void update_adaptive_h_2d(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *));
+void update_adaptive_h(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *));
 void update_adaptive_h_3d(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *));
 void check_adaptive_h(SPHSystem *sph, double eta, double tol);
 #endif

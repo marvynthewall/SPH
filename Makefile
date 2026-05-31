@@ -196,4 +196,5 @@ clean:
 	       tests/test_density \
 	       tests/test_force \
 	       tests/test_init \
-           tests/test_integrator
+           tests/test_integrator \
+		   bin/output*.csv \ 
