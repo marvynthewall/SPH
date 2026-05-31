@@ -1,6 +1,6 @@
 #include "sph_system.h"
 
-void write_csv(SPHSystem2D *sph, const char *filename)
+void write_csv(SPHSystem *sph, const char *filename)
 {
     FILE *fp = fopen(filename, "w");
 

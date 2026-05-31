@@ -12,7 +12,7 @@ parser = argparse.ArgumentParser(description="Create SPH animation with particle
 parser.add_argument("-d", "--dir", type=str, required=True, 
                     help="Target directory containing output_*.csv files")
 parser.add_argument("-o", "--outputfilename", type=str, default="sod_animation_with_h", 
-                    help="Output gif filename (default: sod_animation_with_h)")
+                    help="Output filename (default: sod_animation_with_h)")
 parser.add_argument("-x", "--x_lim", type=float, default=5.0, 
                     help="Size of x direction limit (default: 5.0)")
 parser.add_argument("-f", "--format", type=str, default="gif", 

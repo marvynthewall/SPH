@@ -1,6 +1,6 @@
 #include "sph_system.h"
 
-void allocate_sph_system(SPHSystem2D *sph, int N)
+void allocate_sph_system(SPHSystem *sph, int N)
 {
     if (sph == NULL) {
         fprintf(stderr, "Error: sph is NULL.\n");
@@ -58,7 +58,7 @@ void allocate_sph_system(SPHSystem2D *sph, int N)
     }
 }
 
-void free_sph_system(SPHSystem2D *sph)
+void free_sph_system(SPHSystem *sph)
 {
     if (sph == NULL) {
         return;
