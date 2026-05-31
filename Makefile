@@ -198,4 +198,3 @@ clean:
 	       tests/test_init \
            tests/test_integrator \
 		   bin/output*.csv \ 
-		   output*.csv

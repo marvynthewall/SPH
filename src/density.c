@@ -1,13 +1,14 @@
 #include "density.h"
-void update_adaptive_h_2d(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *))
+
+void update_adaptive_h(SPHSystem *sph, int max_iter, double tol, double eta, void (*compute_density_fn)(SPHSystem *))
 {
     if (sph == NULL || sph->particles == NULL) {
-        fprintf(stderr, "Error: invalid SPH system in update_adaptive_h_2d.\n");
+        fprintf(stderr, "Error: invalid SPH system in update_adaptive_h.\n");
         exit(EXIT_FAILURE);
     }
 
     if (eta <= 0.0 || !isfinite(eta)) {
-        fprintf(stderr, "Error: invalid eta in update_adaptive_h_2d. eta=%e\n", eta);
+        fprintf(stderr, "Error: invalid eta in update_adaptive_h. eta=%e\n", eta);
         exit(EXIT_FAILURE);
     }
 
@@ -208,7 +209,7 @@ void compute_density(SPHSystem *sph){
       // Find particles that with distnace less than p_i's h
       if (r <= p_i->h) {
         double W = 0.0, dWdr = 0.0, dWdh = 0.0;
-        cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
+        cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
 
         // Formula (5): rho_i = sum_j ( m_j * W_ij(h_i) )
         local_rho += p_j->mass * W;
@@ -222,6 +223,67 @@ void compute_density(SPHSystem *sph){
     p_i->drho_dh = drhodh;
   }
 }
+
+void compute_density_3d(SPHSystem *sph)
+{
+    /*
+     * Gather approach:
+     * For each particle i, sum over all particles j to compute rho_i.
+     *
+     * rho_i = sum_j m_j W(|r_i - r_j|, h_i)
+     *
+     * Since each OpenMP thread only updates particles[i],
+     * this loop is safe to parallelize.
+     */
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+
+        double local_rho = 0.0;
+        double drhodh = 0.0;
+
+        Particle *p_i = &sph->particles[i];
+
+        for (int j = 0; j < sph->N; j++) {
+
+            Particle *p_j = &sph->particles[j];
+
+            // Calculate 3D distance
+            double dx = p_i->x - p_j->x;
+            double dy = p_i->y - p_j->y;
+            double dz = p_i->z - p_j->z;
+
+            double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+            /*
+             * Gather approach:
+             * use particle i's smoothing length h_i.
+             */
+            if (r <= p_i->h) {
+
+                double W = 0.0;
+                double dWdr = 0.0;
+                double dWdh = 0.0;
+
+                cubic_spline_kernel_3d(r, p_i->h, &W, &dWdr, &dWdh);
+
+                // rho_i = sum_j m_j W_ij(h_i)
+                local_rho += p_j->mass * W;
+
+                // drho_i / dh_i = sum_j m_j dW_ij / dh_i
+                drhodh += p_j->mass * dWdh;
+            }
+        }
+
+        p_i->rho = local_rho;
+        p_i->drho_dh = drhodh;
+    }
+}
+
+
+
 
 void compute_density_xreflective_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
@@ -248,7 +310,7 @@ void compute_density_xreflective_yperiodic(SPHSystem *sph) {
 
             if (r <= p_i->h) {
                 double W = 0.0, dWdr = 0.0, dWdh = 0.0;
-                cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
+                cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
                 local_rho += p_j->mass * W;
                 drhodh += p_j->mass * dWdh;
             }
@@ -258,7 +320,7 @@ void compute_density_xreflective_yperiodic(SPHSystem *sph) {
             double r_L = sqrt(dx_L * dx_L + dy * dy);
             if (r_L <= p_i->h) {
                 double W = 0.0, dWdr = 0.0, dWdh = 0.0;
-                cubic_spline_kernel_2d(r_L, p_i->h, &W, &dWdr, &dWdh);
+                cubic_spline_kernel(r_L, p_i->h, &W, &dWdr, &dWdh);
                 local_rho += p_j->mass * W;
                 drhodh += p_j->mass * dWdh;
             }
@@ -268,7 +330,114 @@ void compute_density_xreflective_yperiodic(SPHSystem *sph) {
             double r_R = sqrt(dx_R * dx_R + dy * dy);
             if (r_R <= p_i->h) {
                 double W = 0.0, dWdr = 0.0, dWdh = 0.0;
-                cubic_spline_kernel_2d(r_R, p_i->h, &W, &dWdr, &dWdh);
+                cubic_spline_kernel(r_R, p_i->h, &W, &dWdr, &dWdh);
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+            }
+        }
+
+        p_i->rho = local_rho;
+        p_i->drho_dh = drhodh;
+    }
+}
+
+
+void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph)
+{
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+
+        double local_rho = 0.0;
+        double drhodh = 0.0;
+
+        Particle *p_i = &sph->particles[i];
+
+        for (int j = 0; j < sph->N; j++) {
+
+            Particle *p_j = &sph->particles[j];
+
+            double dx = p_i->x - p_j->x;
+            double dy = p_i->y - p_j->y;
+            double dz = p_i->z - p_j->z;
+
+            /*
+             * Y-periodic minimum image
+             */
+            if (dy > 0.5 * sph->box_size_y) {
+                dy -= sph->box_size_y;
+            }
+            if (dy < -0.5 * sph->box_size_y) {
+                dy += sph->box_size_y;
+            }
+
+            /*
+             * Z-periodic minimum image
+             */
+            if (dz > 0.5 * sph->box_size_z) {
+                dz -= sph->box_size_z;
+            }
+            if (dz < -0.5 * sph->box_size_z) {
+                dz += sph->box_size_z;
+            }
+
+            /*
+             * Direct contribution
+             */
+            double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+            if (r <= p_i->h) {
+                double W = 0.0;
+                double dWdr = 0.0;
+                double dWdh = 0.0;
+
+                /*
+                 * This kernel must be the 3D cubic spline kernel.
+                 */
+                cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
+
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+            }
+
+            /*
+             * Left reflective image across x = 0
+             *
+             * x_j,ghost = -x_j
+             * dx_L = x_i - x_j,ghost = x_i + x_j
+             */
+            double dx_L = p_i->x + p_j->x;
+            double r_L = sqrt(dx_L * dx_L + dy * dy + dz * dz);
+
+            if (r_L <= p_i->h) {
+                double W = 0.0;
+                double dWdr = 0.0;
+                double dWdh = 0.0;
+
+                cubic_spline_kernel(r_L, p_i->h, &W, &dWdr, &dWdh);
+
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+            }
+
+            /*
+             * Right reflective image across x = box_size_x
+             *
+             * x_j,ghost = 2 * box_size_x - x_j
+             * dx_R = x_i - x_j,ghost
+             *      = x_i + x_j - 2 * box_size_x
+             */
+            double dx_R = p_i->x + p_j->x - 2.0 * sph->box_size_x;
+            double r_R = sqrt(dx_R * dx_R + dy * dy + dz * dz);
+
+            if (r_R <= p_i->h) {
+                double W = 0.0;
+                double dWdr = 0.0;
+                double dWdh = 0.0;
+
+                cubic_spline_kernel_3d(r_R, p_i->h, &W, &dWdr, &dWdh);
+
                 local_rho += p_j->mass * W;
                 drhodh += p_j->mass * dWdh;
             }
