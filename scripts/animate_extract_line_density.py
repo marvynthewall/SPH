@@ -6,15 +6,17 @@ import glob
 import argparse
 import os
 
+# 引入解析解函數
+from sod_exact import get_sod_exact_rho
+
 # 1. 初始化參數解析
 parser = argparse.ArgumentParser(description="Create 1D Line Density SPH animation for multiple Y slices.")
 parser.add_argument("-d", "--dir", type=str, required=True, 
-                    help="Target directory containing output_*.csv files")
+                    help="Target directory containing output_*.csv and time_log.csv")
 parser.add_argument("-o", "--outputfilename", type=str, default="sod_line_density", 
                     help="Output filename without extension (default: sod_line_density)")
 parser.add_argument("-x", "--x_lim", type=float, default=5.0, 
                     help="Size of x direction limit (default: 5.0)")
-# 修改這裡：使用 nargs='+' 來接收多個數值，並給予預設值 [0.5]
 parser.add_argument("-y", "--y_targets", type=float, nargs='+', default=[0.5], 
                     help="One or more Y coordinates for the sampling lines (e.g., -y 0.2 0.5 0.8)")
 parser.add_argument("-f", "--format", type=str, default="gif", 
@@ -29,12 +31,10 @@ def cubic_spline_kernel_2d(r, h):
     
     W = np.zeros_like(r)
     
-    # 區間 1: 0 <= q <= 0.5
     mask1 = (q >= 0.0) & (q <= 0.5)
     q1 = q[mask1]
     W[mask1] = norm * (1.0 - 6.0 * q1**2 + 6.0 * q1**3)
     
-    # 區間 2: 0.5 < q <= 1.0
     mask2 = (q > 0.5) & (q <= 1.0)
     q2 = q[mask2]
     diff = 1.0 - q2
@@ -42,7 +42,7 @@ def cubic_spline_kernel_2d(r, h):
     
     return W
 
-# 3. 尋找並排序 CSV 檔案
+# 3. 尋找並排序 CSV 檔案，以及讀取時間紀錄
 search_pattern = os.path.join(args.dir, "output_*.csv")
 files = sorted(glob.glob(search_pattern))
 
@@ -50,23 +50,29 @@ if not files:
     print(f"No output files found in directory: {args.dir}!")
     exit(1)
 
+# 讀取 time_log.csv
+time_log_path = os.path.join(args.dir, "time_log.csv")
+if not os.path.exists(time_log_path):
+    print(f"Error: {time_log_path} not found in directory: {args.dir}!")
+    exit(1)
+time_log_df = pd.read_csv(time_log_path)
+
 print(f"Found {len(files)} files. Target Y slices: {args.y_targets}")
 print("Initializing plot...")
 
-# 定義 1000 個 X 軸的抽樣點
-x_sample = np.linspace(0, args.x_lim, 1000)
+x_sample = np.linspace(0, args.x_lim, 5000)
 
 # 4. 建立畫布與初始設定
 fig, ax = plt.subplots(figsize=(10, 6))
 
-# 動態建立多條空折線
 lines = []
 for y_val in args.y_targets:
-    # 每次呼叫 plot，Matplotlib 會自動分配不同顏色
-    line, = ax.plot([], [], lw=2, alpha=0.5, label=f'y = {y_val}')
+    line, = ax.plot([], [], lw=2, alpha=0.5, label=f'SPH y = {y_val}')
     lines.append(line)
 
-# 圖表格式設定
+# 新增：建立一條解析解的線 (黑色虛線)
+exact_line, = ax.plot([], [], 'k--', lw=1.5, label='Analytical Solution')
+
 ax.set_xlabel("x")
 ax.set_ylabel("Density")
 ax.set_xlim(0, args.x_lim)
@@ -81,13 +87,20 @@ title = ax.set_title(f"1D Density Profile - {first_filename}")
 def update(frame):
     filepath = files[frame]
     df = pd.read_csv(filepath)
+    current_filename = os.path.basename(filepath)
+    
+    # 從檔名解析出 step 數字 (例如 output_0010.csv -> 10)
+    step_num = int(current_filename.replace("output_", "").replace(".csv", ""))
+    
+    # 從 time_log_df 找出對應的時間 t
+    # 使用 .loc 確保能精準對應 frame 欄位，避免檔案順序錯亂導致時間對不起來
+    current_t = time_log_df.loc[time_log_df['frame'] == step_num, 't'].values[0]
     
     x_part = df['x'].values
     y_part = df['y'].values
     m_part = df['m'].values
-    h = df['h'].values[0] # 假設每一幀的 h 都是常數
+    h = df['h'].values[0] 
     
-    # 針對每一個指定的 y_target 進行計算與更新
     for idx, y_target in enumerate(args.y_targets):
         rho_sample = np.zeros_like(x_sample)
         
@@ -98,14 +111,17 @@ def update(frame):
                 w = cubic_spline_kernel_2d(r[mask], h)
                 rho_sample[i] = np.sum(m_part[mask] * w)
                 
-        # 更新該條線的資料
         lines[idx].set_data(x_sample, rho_sample)
+        
+    # 計算並更新解析解
+    # x0 設定為管子的正中央 (args.x_lim / 2.0)
+    rho_exact = get_sod_exact_rho(x_sample, current_t, x0=(args.x_lim / 2.0))
+    exact_line.set_data(x_sample, rho_exact)
     
-    current_filename = os.path.basename(filepath)
-    title.set_text(f"1D Density Profile - {current_filename}")
+    # 更新標題，加入時間 t 顯示
+    title.set_text(f"1D Density Profile - {current_filename} (t={current_t:.4f})")
     
-    # 回傳所有更新的物件 (展開 list 並加上 title)
-    return lines + [title]
+    return lines + [exact_line, title]
 
 # 6. 進度條回呼函數
 def print_progress(current_frame, total_frames):
@@ -115,7 +131,6 @@ def print_progress(current_frame, total_frames):
 # 7. 產生與儲存動畫
 ani = animation.FuncAnimation(fig, update, frames=len(files), interval=100, blit=False)
 
-# 根據 format 參數決定輸出格式
 if args.format == 'gif':
     output_file = args.outputfilename + ".gif"
     print(f"Saving animation to {output_file} ... (This will take a while!)")

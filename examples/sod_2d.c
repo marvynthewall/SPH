@@ -80,6 +80,7 @@ int main(int argc, char *argv[]) {
   init_sod_2d_3(&sph, x, y, mass);
 
   // Initialize physical parameters
+  sph.gamma = 1.4;
   sph.cfl = 0.3;
   sph.alpha = 1.0;
   sph.beta = 2.0;
