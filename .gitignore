@@ -7,7 +7,8 @@ tests/test_force
 tests/test_init
 tests/test_kernel
 tests/test_integrator
-scripts/*.png
-scripts/*.jpg
 *.csv
+*.png
+*.gif
+*.mp4
 .vscode
