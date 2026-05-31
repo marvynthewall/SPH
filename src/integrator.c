@@ -61,11 +61,8 @@ double compute_timestep_signal_velocity(SPHSystem2D *sph)
 
             if (r < 1.0e-12) continue;
 
-            /*
-             * If your kernel uses q = r / (2h),
-             * the support radius is 2h.
-             */
-            if (r > 2.0 * h_i) continue;
+            /* If your kernel uses q = r / (h), the support radius is h. */
+            if (r > h_i) continue;
 
             double dvx = p_i->vx - p_j->vx;
             double dvy = p_i->vy - p_j->vy;
@@ -253,6 +250,7 @@ double step_euler_xreflective_yperiodic(SPHSystem2D *sph,
   }
 
   // update hydrodynamic quantities for next step
+  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
@@ -312,6 +310,7 @@ double step_leapfrog_kdk_xreflective_yperiodic(SPHSystem2D *sph,
   sph->time += dt;
 
   // Update hydrodynamic quantities at new position
+  update_adaptive_h(sph, 20, 1e-4, compute_density_xreflective_yperiodic);
   compute_density_xreflective_yperiodic(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);

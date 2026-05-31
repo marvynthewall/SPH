@@ -76,9 +76,9 @@ all: $(BIN_DIR)/sod_2d
 	@if [ "$(GPU)" = "1" ]; then \
 		echo "[CUDA GPU Acceleration Enabled]"; \
 	elif [ "$(OMP)" = "1" ]; then \
-		"[OpenMP Parallel Acceleration Enabled]"; \
+		echo "[OpenMP Parallel Acceleration Enabled]"; \
 	else \
-		"[Standard CPU Compilation]"; \
+		echo "[Standard CPU Compilation]"; \
 	fi
 
 # ----------------------------

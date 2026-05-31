@@ -25,4 +25,6 @@
 void compute_density(SPHSystem2D *sph);
 void compute_density_xreflective_yperiodic(SPHSystem2D *sph);
 
+void update_adaptive_h(SPHSystem2D *sph, int max_iter, double tol, void (*compute_density_fn)(SPHSystem2D *));
+void check_adaptive_h(SPHSystem2D *sph, double eta, double tol);
 #endif
