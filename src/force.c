@@ -9,7 +9,7 @@ void compute_pressure_soundspeed_factor(SPHSystem *sph) {
   double GG1 = sqrt(sph->gamma * (sph->gamma - 1.0));
   double inv_dim = 1.0 / (double)sph->dim;
 
-#ifdef OMP
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
   for (int i = 0; i < sph->N; i++) {
@@ -98,17 +98,17 @@ compute_pairwise_physics(Particle *p_i, Particle *p_j, SPHSystem *sph) {
 
     // update the acceleration
     // Eq(26)
-    double Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dx / r);
-    double Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dy / r);
+    Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dx/r);
+    Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dy/r);
     p_i->ax += Vax;
     p_i->ay += Vay;
-#ifndef OMP
+#ifndef _OPENMP
     p_j->dudt += p_i->mass / 2.0 * PI_ij * avg_inner;
 #endif
-  }
+}
 
   // --- 4. Reaction force only for single core
-#ifndef OMP
+#ifndef _OPENMP
   double mass_ratio = p_i->mass / p_j->mass;
   p_j->ax -= (ax + Vax) * mass_ratio;
   p_j->ay -= (ay + Vay) * mass_ratio;
@@ -118,7 +118,7 @@ compute_pairwise_physics(Particle *p_i, Particle *p_j, SPHSystem *sph) {
 }
 
 void compute_force(SPHSystem *sph) {
-#ifdef OMP
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
   // initialize the ax,ay,dudt in every particle
@@ -127,7 +127,7 @@ void compute_force(SPHSystem *sph) {
     sph->particles[i].ay = 0.0;
     sph->particles[i].dudt = 0.0;
   }
-#ifdef OMP
+#ifdef _OPENMP
 #pragma omp parallel for
   // openmp, run every i to j, for parallelization
   for (int i = 0; i < sph->N; i++) {
@@ -377,7 +377,7 @@ void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
   }
 }
 
-  __attribute__((always_inline)) static inline void compute_pairwise_physics_3d(
+__attribute__((always_inline)) static inline void compute_pairwise_physics_3d(
       Particle * p_i, Particle * p_j, SPHSystem * sph) {
     double dx = p_i->x - p_j->x;
     double dy = p_i->y - p_j->y;
@@ -450,19 +450,19 @@ void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
 
       // update the acceleration
       // Eq(26)
-      double Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dx / r);
-      double Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dy / r);
-      double Vaz = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dz / r);
+      Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dx/r);
+      Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dy/r);
+      Vaz = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dz/r);
       p_i->ax += Vax;
       p_i->ay += Vay;
       p_i->az += Vaz;
-#ifndef OMP
+#ifndef _OPENMP
       p_j->dudt += p_i->mass / 2.0 * PI_ij * avg_inner;
 #endif
     }
 
     // --- 4. Reaction force only for single core
-#ifndef OMP
+#ifndef _OPENMP
     double mass_ratio = p_i->mass / p_j->mass;
     p_j->ax -= (ax + Vax) * mass_ratio;
     p_j->ay -= (ay + Vay) * mass_ratio;
@@ -472,37 +472,37 @@ void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
 #endif
   }
 
-  void compute_force_3d(SPHSystem * sph) {
-#ifdef OMP
+void compute_force_3d(SPHSystem *sph) {
+#ifdef _OPENMP
 #pragma omp parallel for
 #endif
-    // initialize the ax,ay,dudt in every particle
-    for (int i = 0; i < sph->N; i++) {
-      sph->particles[i].ax = 0.0;
-      sph->particles[i].ay = 0.0;
-      sph->particles[i].az = 0.0;
-      sph->particles[i].dudt = 0.0;
-    }
-#ifdef OMP
-#pragma omp parallel for
-    // openmp, run every i to j, for parallelization
-    for (int i = 0; i < sph->N; i++) {
-      Particle *p_i = &sph->particles[i];
-      for (int j = 0; j < sph->N; j++) {
-        if (i == j)
-          continue;
-        Particle *p_j = &sph->particles[j];
-        compute_pairwise_physics_3d(p_i, p_j, sph);
-      }
-    }
-#else
-    // run only pairs (half the number of the computation)
-    for (int i = 0; i < sph->N; i++) {
-      Particle *p_i = &sph->particles[i];
-      for (int j = i + 1; j < sph->N; j++) {
-        Particle *p_j = &sph->particles[j];
-        compute_pairwise_physics_3d(p_i, p_j, sph);
-      }
-    }
-#endif
+  // initialize the ax,ay,dudt in every particle
+  for (int i = 0; i < sph->N; i++){
+    sph->particles[i].ax = 0.0;
+    sph->particles[i].ay = 0.0;
+    sph->particles[i].az = 0.0;
+    sph->particles[i].dudt = 0.0;
   }
+#ifdef _OPENMP
+#pragma omp parallel for
+  // openmp, run every i to j, for parallelization
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+    for (int j = 0; j < sph->N; j++) {
+      if (i == j)
+        continue;
+      Particle *p_j = &sph->particles[j];
+      compute_pairwise_physics_3d(p_i, p_j, sph);
+    }
+  }
+#else
+  // run only pairs (half the number of the computation)
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+    for (int j = i + 1; j < sph->N; j++) {
+      Particle *p_j = &sph->particles[j];
+      compute_pairwise_physics_3d(p_i, p_j, sph);
+    }
+  }
+#endif
+}
