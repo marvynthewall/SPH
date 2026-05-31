@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
   double dt_output = 0.01;
   double next_output_time = 0.0;
 
-  printf("\n初始化完成，開始模擬...\n");
+  printf("\n初始化完成,開始模擬...\n");
 
   while (t < t_end) {
     if (t >= next_output_time) {
