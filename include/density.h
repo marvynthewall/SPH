@@ -23,5 +23,6 @@
  * num_particles: Total number of particles
  */
 void compute_density(SPHSystem2D *sph);
+void compute_density_xreflective_yperiodic(SPHSystem2D *sph);
 
 #endif
