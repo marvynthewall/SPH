@@ -343,10 +343,11 @@ step_euler_xreflective_yperiodic(SPHSystem *sph,
   return dt;
 }
 
-double step_euler_xreflective_yzperiodic_3d(
-    SPHSystem *sph, double (*calculate_timep_step)(SPHSystem *),
-    void (*compute_forces)(SPHSystem *)) {
-  double dt = calculate_timep_step(sph);
+double
+step_euler_xreflective_yzperiodic_3d(SPHSystem *sph,
+                                     double (*calculate_time_step)(SPHSystem *),
+                                     void (*compute_forces)(SPHSystem *)) {
+  double dt = calculate_time_step(sph);
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)

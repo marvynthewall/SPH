@@ -8,7 +8,7 @@ void write_csv(SPHSystem *sph, const char *filename) {
     exit(EXIT_FAILURE);
   }
 
-  fprintf(fp, "id,x,y,vx,vy,ax,ay,m,rho,P,u,h,cs\n");
+  fprintf(fp, "id,x,y,z,vx,vy,vz,ax,ay,az,m,rho,P,u,h,cs\n");
 
   for (int i = 0; i < sph->N; i++) {
     fprintf(fp,

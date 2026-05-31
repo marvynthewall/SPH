@@ -212,6 +212,7 @@ void init_sod_2d_2(SPHSystem *sph, double x, double y, double mass) {
   int N_R = N - N_L;
 
   allocate_sph_system(sph, N);
+  sph->gamma = gamma;
 
   sph->box_size_x = x;
   sph->box_size_y = y;
@@ -277,9 +278,12 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
   int N_R = nx_R * ny_R;
   int N = N_L + N_R;
 
+  printf("Number of Particles: %d\n", N);
+
   // Allocate memory for the SPH system
   allocate_sph_system(sph, N);
 
+  sph->gamma = gamma;
   sph->box_size_x = x_max;
   sph->box_size_y = y_max;
 
