@@ -1,15 +1,17 @@
 #include "integrator.h"
 
-#include <float.h>
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
+
 
 double compute_timestep(SPHSystem2D *sph)
 {
     double dt_min = DBL_MAX;
     double cfl = sph->cfl;
-
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min)  schedule(dynamic)
+#endif
     for (int i = 0; i < sph->N; i++) {
         double cs = sph->particles[i].cs;
         double h  = sph->particles[i].h;
@@ -19,7 +21,6 @@ double compute_timestep(SPHSystem2D *sph)
             dt_min = min(dt_min, dt_i);
         }
     }
-
     sph->dt = dt_min;
     return dt_min;
 }
@@ -30,8 +31,10 @@ double compute_timestep_signal_velocity(SPHSystem2D *sph)
     double dt_min = DBL_MAX;
     double cfl = sph->cfl;
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min) schedule(dynamic)
+#endif
     for (int i = 0; i < sph->N; i++) {
-
         Particle *p_i = &sph->particles[i];
 
         double h_i = p_i->h;
@@ -112,6 +115,9 @@ double step_euler(
 {
     double dt = calculate_timep_step(sph);
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min) schedule(dynamic)
+#endif
     for (int i = 0; i < sph->N; i++) {
 
         // use old velocity to update position
@@ -148,9 +154,11 @@ double step_leapfrog_kdk(
 {
     double dt = calculate_time_step(sph);
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min) schedule(dynamic)
+#endif
     // Kick: half-step velocity and internal energy update
     for (int i = 0; i < sph->N; i++) {
-
         sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
         sph->particles[i].vy += 0.5 * sph->particles[i].ay * dt;
 
@@ -161,6 +169,9 @@ double step_leapfrog_kdk(
         }
     }
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min) schedule(dynamic)
+#endif
     // Drift: full-step position update
     for (int i = 0; i < sph->N; i++) {
 
@@ -175,6 +186,9 @@ double step_leapfrog_kdk(
     compute_pressure_soundspeed_factor(sph);
     compute_forces(sph);
 
+#ifdef _OPENMP
+#pragma omp parallel for reduction(min:dt_min) schedule(dynamic)
+#endif
     // Kick: another half-step velocity and internal energy update
     for (int i = 0; i < sph->N; i++) {
 

@@ -1,12 +1,13 @@
 #include "density.h"
 
+
 void compute_density(SPHSystem2D *sph){
 /*
  * OpenMP Parallelization Technique:
  * Adding #pragma omp parallel for will automatically split the loop
  * across multiple CPU cores (e.g., with gcc -fopenmp).
  * Because we are using the "Gather" approach, the loop body only modifies
- * `particles[i].density`. Each core is responsible for a different `i`,
+ * `particles[i].rho`. Each core is responsible for a different `i`,
  * so they don't modify the same memory location, thus avoiding Race Conditions.
  */
 

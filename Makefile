@@ -74,11 +74,11 @@ OBJS = $(BUILD_DIR)/sph_system.o \
 # ----------------------------
 all: $(BIN_DIR)/sod_2d
 	@if [ "$(GPU)" = "1" ]; then \
-		echo "【已啟用 CUDA GPU 顯示卡加速編譯】"; \
+		echo "[CUDA GPU Acceleration Enabled]"; \
 	elif [ "$(OMP)" = "1" ]; then \
-		echo "【已啟用 OpenMP 平行加速編譯】"; \
+		"[OpenMP Parallel Acceleration Enabled]"; \
 	else \
-		echo "【CPU 常規編譯】"; \
+		"[Standard CPU Compilation]"; \
 	fi
 
 # ----------------------------
