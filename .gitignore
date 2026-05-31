@@ -14,3 +14,5 @@ tests/test_integrator
 *.gif
 *.mp4
 .vscode
+*old*
+__pycache__/
