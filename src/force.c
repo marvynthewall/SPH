@@ -39,9 +39,9 @@ __attribute__((always_inline)) static inline void compute_pairwise_physics(Parti
 
     // get the W_ij(h_i) and W_ij(h_j)
     double W_i, dWdr_i, dWdh_i;
-    cubic_spline_kernel_2d(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
+    cubic_spline_kernel(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
     double W_j, dWdr_j, dWdh_j;
-    cubic_spline_kernel_2d(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
+    cubic_spline_kernel(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
 
     // --- 1. Pressure Force ---
     // Pressure force, Eq(22)
@@ -170,9 +170,9 @@ void compute_force_xreflective_yperiodic(SPHSystem *sph) {
         if (r < 1e-12 || r > max_h) continue;
 
         double W_i, dWdr_i, dWdh_i;
-        cubic_spline_kernel_2d(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
+        cubic_spline_kernel(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
         double W_j, dWdr_j, dWdh_j;
-        cubic_spline_kernel_2d(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
+        cubic_spline_kernel(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
 
         double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr_i;
         double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) * dWdr_j;
@@ -229,7 +229,7 @@ void compute_force_xreflective_yperiodic(SPHSystem *sph) {
       if (r < 1e-12 || r > p_i->h) continue;
 
       double W, dWdr, dWdh;
-      cubic_spline_kernel_2d(r, p_i->h, &W, &dWdr, &dWdh);
+      cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
 
       double term = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr;
       double scalar_force = p_i->mass * (2.0 * term);

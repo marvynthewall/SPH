@@ -1,7 +1,7 @@
 #include "../include/kernel.h"
 
-void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr,
-                            double *dWdh) {
+void cubic_spline_kernel(double r, double h, double *W, double *dWdr, double *dWdh)
+{
   // q is the dimensionless distance (r/h)
   double q = r / h;
 
@@ -42,8 +42,8 @@ void cubic_spline_kernel_2d(double r, double h, double *W, double *dWdr,
   }
 }
 
-void cubic_spline_kernel_3d(double r, double h, double *W, double *dWdr,
-                            double *dWdh) {
+void cubic_spline_kernel_3d(double r, double h, double *W, double *dWdr, double *dWdh)
+{
   // q is the dimensionless distance (r/h)
   double q = r / h;
 
