@@ -1,7 +1,11 @@
 #include "sph_system.h"
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/time.h>
 #include <errno.h>
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
@@ -16,6 +20,7 @@ int main(int argc, char *argv[]) {
   char *x_c = "5.0";
   double t_end = 5.0;
   char *t_c = "5.0";
+  int num_threads = 0;
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
@@ -42,13 +47,37 @@ int main(int argc, char *argv[]) {
       custom_folder_set = 1; // 標記使用者有指定資料夾
       i++;
     }
+    // 新增：處理 -th 參數
+    else if (strcmp(argv[i], "-th") == 0 && i + 1 < argc) {
+        num_threads = atoi(argv[i+1]);
+        i++;
+    }
   }
   
   if (custom_folder_set == 0){
-    snprintf(output_folder, sizeof(output_folder), "sod_default_folder");
+    snprintf(output_folder, sizeof(output_folder), "sod_m%s_x%s_t%s", mass_c, x_c, t_c);
   }
-  snprintf(output_folder, sizeof(output_folder), "sod_m%s_x%s_t%s", mass_c, x_c, t_c);
   printf("Output will be saved to: %s\n", output_folder);
+
+#ifdef _OPENMP
+  if (num_threads > 0) {
+      // 如果使用者有指定，就強制設定 OpenMP 使用該數量
+      omp_set_num_threads(num_threads);
+  }
+
+  // 注意：在平行區塊「外」要使用 omp_get_max_threads()
+  // 才能正確抓到「等一下平行區塊會用多少個 thread」
+  int actual_threads = omp_get_max_threads();
+  printf("Execution Mode: OpenMP Acceleration Enabled\n");
+  printf("Number of Threads: %d\n", actual_threads);
+#else
+  if (num_threads > 0) {
+      // 防呆機制：使用者下了 -th 但編譯時沒開 OpenMP
+      printf("Warning: '-th %d' ignored because OpenMP is not enabled during compilation.\n", num_threads);
+  }
+  printf("Execution Mode: Single Core (OpenMP disabled)\n");
+#endif
+  printf("====================================\n");
 
   // 嘗試建立資料夾，0777 是基本的讀寫權限設定
   if (mkdir(output_folder, 0777) == -1) {
@@ -101,12 +130,23 @@ int main(int argc, char *argv[]) {
   double t = 0.0;
   int step = 0;
   int output_step = 0;
-  double dt_output = 0.01;
+  double dt_output = 1.0;
   double next_output_time = 0.0;
 
   printf("\n初始化完成,開始模擬...\n");
 
-  while (t < t_end) {
+  // timing
+#ifdef _OPENMP
+  double start_time_omp=0.0;
+  start_time_omp = omp_get_wtime();
+  printf("Starting simulation with OpenMP acceleration...\n");
+#else
+  struct timeval run_t_start, run_t_end;
+  gettimeofday(&run_t_start, NULL);
+  printf("Starting simulation on Single Core...\n");
+#endif
+
+  while (t < t_end + dt_output) {
     if (t >= next_output_time) {
       printf("output_time: %.4f\n", t);
       char filename[256];
@@ -122,7 +162,8 @@ int main(int argc, char *argv[]) {
       }
       output_step++;
       next_output_time += dt_output;
-
+      if (t >= t_end)
+        break;
     }
 
     // integrate one step
@@ -135,9 +176,21 @@ int main(int argc, char *argv[]) {
     step++;
   }
 
-  printf("\n模擬完成 ...\n");
-  printf("總共輸出檔案數量: %d\n", output_step);
-  printf("設定粒子質量: %f\n", mass);
+  double elapsed_time = 0.0;
+  
+#ifdef _OPENMP
+  elapsed_time = omp_get_wtime() - start_time_omp;
+#else
+  gettimeofday(&run_t_end, NULL);
+  elapsed_time = (run_t_end.tv_sec - run_t_start.tv_sec) + (run_t_end.tv_usec - run_t_start.tv_usec) / 1000000.0;
+#endif
+
+  printf("====================================\n");
+  printf("Simulation finished!\n");
+  printf("Total Execution Time: %.3f seconds\n", elapsed_time);
+  printf("Total Outputfile numbers: %d\n", output_step);
+  printf("Mass of particles: %f\n", mass);
+  printf("====================================\n");
 
   // 3. 迴圈結束後，安全關閉檔案
   if (time_log != NULL)fclose(time_log);

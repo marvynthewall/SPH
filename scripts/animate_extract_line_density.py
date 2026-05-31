@@ -19,8 +19,8 @@ parser.add_argument("-x", "--x_lim", type=float, default=5.0,
                     help="Size of x direction limit (default: 5.0)")
 parser.add_argument("-y", "--y_targets", type=float, nargs='+', default=[0.5], 
                     help="One or more Y coordinates for the sampling lines (e.g., -y 0.2 0.5 0.8)")
-parser.add_argument("-f", "--format", type=str, default="gif", 
-                    help="File format, mp4 or gif (default: gif)")
+parser.add_argument("-f", "--format", type=str, default="mp4", 
+                    help="File format, mp4 or gif (default: mp4)")
 args = parser.parse_args()
 
 # 2. Kernel 函數定義
