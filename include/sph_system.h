@@ -7,6 +7,10 @@
 #include <string.h>
 #include <float.h>
 #include <assert.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/time.h>
+#include <errno.h>
 
 // Physical constants
 // can be put into constants.h file

@@ -1,8 +1,4 @@
 #include "sph_system.h"
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <sys/time.h>
-#include <errno.h>
 #ifdef _OPENMP
 #include <omp.h>
 #endif
