@@ -107,7 +107,8 @@ double compute_timestep_signal_velocity(SPHSystem *sph) {
   return dt_min;
 }
 
-double compute_timestep_signal_velocity_3d(SPHSystem *sph) {
+double compute_timestep_signal_velocity_3d(SPHSystem *sph)
+{
   double dt_min = DBL_MAX;
   double cfl = sph->cfl;
 
@@ -128,46 +129,37 @@ double compute_timestep_signal_velocity_3d(SPHSystem *sph) {
 
       Particle *p_j = &sph->particles[j];
 
-      // 3D relative position
       double dx = p_i->x - p_j->x;
+
       double dy = p_i->y - p_j->y;
+      if (dy > 0.5 * sph->box_size_y) {
+        dy -= sph->box_size_y;
+      } else if (dy < -0.5 * sph->box_size_y) {
+        dy += sph->box_size_y;
+      }
+
       double dz = p_i->z - p_j->z;
+      if (dz > 0.5 * sph->box_size_z) {
+        dz -= sph->box_size_z;
+      } else if (dz < -0.5 * sph->box_size_z) {
+        dz += sph->box_size_z;
+      }
 
       double r = sqrt(dx * dx + dy * dy + dz * dz);
 
       if (r < 1.0e-12)
         continue;
 
-      /*
-       * If your kernel uses q = r / h,
-       * the support radius is h.
-       *
-       * If your kernel support is 2h,
-       * change this to:
-       *     if (r > 2.0 * h_i) continue;
-       */
       if (r > h_i)
         continue;
 
-      // 3D relative velocity
       double dvx = p_i->vx - p_j->vx;
       double dvy = p_i->vy - p_j->vy;
       double dvz = p_i->vz - p_j->vz;
 
-      /*
-       * (v_i - v_j) dot (r_i - r_j)
-       */
       double vij_dot_rij = dvx * dx + dvy * dy + dvz * dz;
-
-      /*
-       * wij < 0 means particles are approaching.
-       */
       double wij = vij_dot_rij / r;
 
-      /*
-       * Signal velocity:
-       * basic acoustic part + compression correction.
-       */
       double vsig_ij = p_i->cs + p_j->cs;
 
       if (wij < 0.0) {
@@ -189,10 +181,9 @@ double compute_timestep_signal_velocity_3d(SPHSystem *sph) {
   }
 
   if (dt_min == DBL_MAX || !isfinite(dt_min) || dt_min <= 0.0) {
-    fprintf(
-        stderr,
-        "Error: invalid timestep in compute_timestep_signal_velocity. dt=%e\n",
-        dt_min);
+    fprintf(stderr,
+            "Error: invalid timestep in compute_timestep_signal_velocity_3d. dt=%e\n",
+            dt_min);
     exit(EXIT_FAILURE);
   }
 

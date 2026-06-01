@@ -381,7 +381,7 @@ __attribute__((always_inline)) static inline void compute_pairwise_physics_3d(
       Particle * p_i, Particle * p_j, SPHSystem * sph) {
     double dx = p_i->x - p_j->x;
     double dy = p_i->y - p_j->y;
-    double dz = p_i->y - p_j->y;
+    double dz = p_i->z - p_j->z;
     double r = sqrt(dx * dx + dy * dy + dz * dz);
     if (r < 1e-12)
       return; // avoid error
@@ -470,7 +470,7 @@ __attribute__((always_inline)) static inline void compute_pairwise_physics_3d(
     p_j->dudt += p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) *
                  p_i->mass * inner_product_v_dW_j;
 #endif
-  }
+}
 
 void compute_force_3d(SPHSystem *sph) {
 #ifdef _OPENMP
@@ -505,4 +505,125 @@ void compute_force_3d(SPHSystem *sph) {
     }
   }
 #endif
+}
+
+
+void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
+{
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        sph->particles[i].ax = 0.0;
+        sph->particles[i].ay = 0.0;
+        sph->particles[i].az = 0.0;
+        sph->particles[i].dudt = 0.0;
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+
+        Particle *p_i = &sph->particles[i];
+
+        for (int j = 0; j < sph->N; j++) {
+
+            if (i == j) {
+                continue;
+            }
+
+            Particle *p_j = &sph->particles[j];
+
+            double dx = p_i->x - p_j->x;
+
+            double dy = p_i->y - p_j->y;
+            if (dy > 0.5 * sph->box_size_y) {
+                dy -= sph->box_size_y;
+            } else if (dy < -0.5 * sph->box_size_y) {
+                dy += sph->box_size_y;
+            }
+
+            double dz = p_i->z - p_j->z;
+            if (dz > 0.5 * sph->box_size_z) {
+                dz -= sph->box_size_z;
+            } else if (dz < -0.5 * sph->box_size_z) {
+                dz += sph->box_size_z;
+            }
+
+            double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+            double max_h = fmax(p_i->h, p_j->h);
+
+            if (r < 1.0e-12 || r > max_h) {
+                continue;
+            }
+
+            double W_i = 0.0;
+            double dWdr_i = 0.0;
+            double dWdh_i = 0.0;
+
+            cubic_spline_kernel_3d(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
+
+            double gradWix = dWdr_i * dx / r;
+            double gradWiy = dWdr_i * dy / r;
+            double gradWiz = dWdr_i * dz / r;
+
+            double dvx = p_i->vx - p_j->vx;
+            double dvy = p_i->vy - p_j->vy;
+            double dvz = p_i->vz - p_j->vz;
+
+            double pressure_term =
+                p_i->factor * p_i->pressure / (p_i->rho * p_i->rho)
+              + p_j->factor * p_j->pressure / (p_j->rho * p_j->rho);
+
+            p_i->ax += -p_j->mass * pressure_term * gradWix;
+            p_i->ay += -p_j->mass * pressure_term * gradWiy;
+            p_i->az += -p_j->mass * pressure_term * gradWiz;
+
+            double inner_product_v_dW_i =
+                dvx * gradWix
+              + dvy * gradWiy
+              + dvz * gradWiz;
+
+            p_i->dudt +=
+                p_i->factor
+              * p_i->pressure
+              / (p_i->rho * p_i->rho)
+              * p_j->mass
+              * inner_product_v_dW_i;
+
+            double r_dot_v =
+                dx * dvx
+              + dy * dvy
+              + dz * dvz;
+
+            if (r_dot_v < 0.0) {
+
+                double h_ij = 0.5 * (p_i->h + p_j->h);
+
+                double mu_ij =
+                    h_ij * r_dot_v
+                  / (r * r + sph->epsilon * h_ij * h_ij);
+
+                double c_ij = 0.5 * (p_i->cs + p_j->cs);
+                double rho_ij = 0.5 * (p_i->rho + p_j->rho);
+
+                double PI_ij =
+                    (-sph->alpha * c_ij * mu_ij
+                     + sph->beta * mu_ij * mu_ij)
+                  / rho_ij;
+
+                p_i->dudt +=
+                    0.5
+                  * p_j->mass
+                  * PI_ij
+                  * inner_product_v_dW_i;
+
+                p_i->ax += -p_j->mass * PI_ij * gradWix;
+                p_i->ay += -p_j->mass * PI_ij * gradWiy;
+                p_i->az += -p_j->mass * PI_ij * gradWiz;
+            }
+        }
+    }
 }

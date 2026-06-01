@@ -413,7 +413,7 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
         /*
          * This kernel must be the 3D cubic spline kernel.
          */
-        cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
+        cubic_spline_kernel_3d(r, p_i->h, &W, &dWdr, &dWdh);
 
         local_rho += p_j->mass * W;
         drhodh += p_j->mass * dWdh;
@@ -433,7 +433,7 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
         double dWdr = 0.0;
         double dWdh = 0.0;
 
-        cubic_spline_kernel(r_L, p_i->h, &W, &dWdr, &dWdh);
+        cubic_spline_kernel_3d(r_L, p_i->h, &W, &dWdr, &dWdh);
 
         local_rho += p_j->mass * W;
         drhodh += p_j->mass * dWdh;

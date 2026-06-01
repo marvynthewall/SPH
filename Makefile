@@ -2,7 +2,13 @@
 # SPH Project Makefile
 # ============================================================
 
-.PHONY: all cpu omp gpu clean run run_cpu run_omp run_gpu animate test
+.PHONY: all cpu omp gpu \
+        sod_2d sod_3d kh_2d \
+        clean run \
+        run_sod2d_cpu run_sod2d_omp run_sod2d_gpu \
+        run_sod3d_cpu run_sod3d_omp run_sod3d_gpu \
+        run_kh_cpu run_kh_omp run_kh_gpu \
+        animate test
 
 # ----------------------------
 # Directories
@@ -15,13 +21,13 @@ BIN_DIR   = bin
 # ----------------------------
 # Compiler settings
 # ----------------------------
-CC_CPU    = gcc
-CC_OMP    = gcc-14
-NVCC      = nvcc
+CC_CPU = gcc
+CC_OMP = gcc-14
+NVCC   = nvcc
 
-CFLAGS_CPU  = -O3 -Wall -Iinclude/
-CFLAGS_OMP  = -O3 -Wall -Iinclude/ -fopenmp
-NVCCFLAGS   = -O3 -Iinclude/ -Xcompiler "-Wall"
+CFLAGS_CPU = -O3 -Wall -Iinclude/
+CFLAGS_OMP = -O3 -Wall -Iinclude/ -fopenmp
+NVCCFLAGS  = -O3 -Iinclude/ -Xcompiler "-Wall"
 
 LDFLAGS_CPU = -lm
 LDFLAGS_OMP = -lm -fopenmp
@@ -32,34 +38,34 @@ LDFLAGS_GPU = -lm -L/usr/lib/x86_64-linux-gnu -lcudart
 # ----------------------------
 SRCS_COMMON = sph_system kernel init io
 
-OBJS_CPU = $(foreach s, $(SRCS_COMMON), $(BUILD_CPU)/$(s).o) \
+OBJS_CPU = $(foreach s,$(SRCS_COMMON),$(BUILD_CPU)/$(s).o) \
            $(BUILD_CPU)/density.o \
-           $(BUILD_CPU)/force.o   \
+           $(BUILD_CPU)/force.o \
            $(BUILD_CPU)/integrator.o
 
-OBJS_OMP = $(foreach s, $(SRCS_COMMON), $(BUILD_OMP)/$(s).o) \
+OBJS_OMP = $(foreach s,$(SRCS_COMMON),$(BUILD_OMP)/$(s).o) \
            $(BUILD_OMP)/density.o \
-           $(BUILD_OMP)/force.o   \
+           $(BUILD_OMP)/force.o \
            $(BUILD_OMP)/integrator.o
 
-OBJS_GPU = $(foreach s, $(SRCS_COMMON), $(BUILD_GPU)/$(s).o) \
+OBJS_GPU = $(foreach s,$(SRCS_COMMON),$(BUILD_GPU)/$(s).o) \
            $(BUILD_GPU)/density.o \
-           $(BUILD_GPU)/force.o   \
+           $(BUILD_GPU)/force.o \
            $(BUILD_GPU)/integrator.o
 
 # ----------------------------
 # Default target
 # ----------------------------
-all: cpu kh_2d
+all: sod_2d sod_3d kh_2d
 
-cpu: $(BIN_DIR)/sod_2d_cpu
-	@echo "[Standard CPU Compilation]"
+cpu: $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/kh_2d_cpu
+	@echo "[Standard CPU Compilation Complete]"
 
-omp: $(BIN_DIR)/sod_2d_omp
-	@echo "[OpenMP Parallel Acceleration Enabled]"
+omp: $(BIN_DIR)/sod_2d_omp $(BIN_DIR)/sod_3d_omp $(BIN_DIR)/kh_2d_omp
+	@echo "[OpenMP Compilation Complete]"
 
-gpu: $(BIN_DIR)/sod_2d_gpu
-	@echo "[CUDA GPU Acceleration Enabled]"
+gpu: $(BIN_DIR)/sod_2d_gpu $(BIN_DIR)/sod_3d_gpu $(BIN_DIR)/kh_2d_gpu
+	@echo "[CUDA GPU Compilation Complete]"
 
 # ----------------------------
 # Create directories
@@ -76,9 +82,11 @@ $(BUILD_GPU):
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
 
-# ----------------------------
-# Link
-# ----------------------------
+# ============================================================
+# 2D Sod shock tube
+# ============================================================
+sod_2d: $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_2d_omp $(BIN_DIR)/sod_2d_gpu
+
 $(BIN_DIR)/sod_2d_cpu: $(OBJS_CPU) $(BUILD_CPU)/sod_2d.o | $(BIN_DIR)
 	$(CC_CPU) $(CFLAGS_CPU) -o $@ $^ $(LDFLAGS_CPU)
 
@@ -88,18 +96,38 @@ $(BIN_DIR)/sod_2d_omp: $(OBJS_OMP) $(BUILD_OMP)/sod_2d.o | $(BIN_DIR)
 $(BIN_DIR)/sod_2d_gpu: $(OBJS_GPU) $(BUILD_GPU)/sod_2d.o | $(BIN_DIR)
 	$(NVCC) $(NVCCFLAGS) -o $@ $^ $(LDFLAGS_GPU)
 
-kh_2d: $(BIN_DIR)/kh_2d
+# ============================================================
+# 3D Sod shock tube
+# ============================================================
+sod_3d: $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/sod_3d_omp $(BIN_DIR)/sod_3d_gpu
 
-$(BIN_DIR)/kh_2d: $(OBJS_CPU) $(BUILD_CPU)/kh_2d.o | $(BIN_DIR)
+$(BIN_DIR)/sod_3d_cpu: $(OBJS_CPU) $(BUILD_CPU)/sod_3d.o | $(BIN_DIR)
 	$(CC_CPU) $(CFLAGS_CPU) -o $@ $^ $(LDFLAGS_CPU)
+
+$(BIN_DIR)/sod_3d_omp: $(OBJS_OMP) $(BUILD_OMP)/sod_3d.o | $(BIN_DIR)
+	$(CC_OMP) $(CFLAGS_OMP) -o $@ $^ $(LDFLAGS_OMP)
+
+$(BIN_DIR)/sod_3d_gpu: $(OBJS_GPU) $(BUILD_GPU)/sod_3d.o | $(BIN_DIR)
+	$(NVCC) $(NVCCFLAGS) -o $@ $^ $(LDFLAGS_GPU)
+
+# ============================================================
+# Kelvin-Helmholtz 2D
+# ============================================================
+kh_2d: $(BIN_DIR)/kh_2d_cpu $(BIN_DIR)/kh_2d_omp $(BIN_DIR)/kh_2d_gpu
+
+$(BIN_DIR)/kh_2d_cpu: $(OBJS_CPU) $(BUILD_CPU)/kh_2d.o | $(BIN_DIR)
+	$(CC_CPU) $(CFLAGS_CPU) -o $@ $^ $(LDFLAGS_CPU)
+
+$(BIN_DIR)/kh_2d_omp: $(OBJS_OMP) $(BUILD_OMP)/kh_2d.o | $(BIN_DIR)
+	$(CC_OMP) $(CFLAGS_OMP) -o $@ $^ $(LDFLAGS_OMP)
+
+$(BIN_DIR)/kh_2d_gpu: $(OBJS_GPU) $(BUILD_GPU)/kh_2d.o | $(BIN_DIR)
+	$(NVCC) $(NVCCFLAGS) -o $@ $^ $(LDFLAGS_GPU)
 
 # ----------------------------
 # Compile examples
 # ----------------------------
 $(BUILD_CPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_CPU)
-	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
-
-$(BUILD_CPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
 
 $(BUILD_OMP)/sod_2d.o: examples/sod_2d.c | $(BUILD_OMP)
@@ -108,8 +136,26 @@ $(BUILD_OMP)/sod_2d.o: examples/sod_2d.c | $(BUILD_OMP)
 $(BUILD_GPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_GPU)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
+$(BUILD_CPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_CPU)
+	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
+
+$(BUILD_OMP)/sod_3d.o: examples/sod_3d.c | $(BUILD_OMP)
+	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
+
+$(BUILD_GPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_GPU)
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+
+$(BUILD_CPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_CPU)
+	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
+
+$(BUILD_OMP)/kh_2d.o: examples/kh_2d.c | $(BUILD_OMP)
+	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
+
+$(BUILD_GPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_GPU)
+	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+
 # ----------------------------
-# Compile common sources (CPU)
+# Compile common sources CPU
 # ----------------------------
 $(BUILD_CPU)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
@@ -133,7 +179,7 @@ $(BUILD_CPU)/integrator.o: src/integrator.c include/integrator.h | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
 
 # ----------------------------
-# Compile common sources (OMP)
+# Compile common sources OMP
 # ----------------------------
 $(BUILD_OMP)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
@@ -156,11 +202,8 @@ $(BUILD_OMP)/force.o: src/force.c include/force.h | $(BUILD_OMP)
 $(BUILD_OMP)/integrator.o: src/integrator.c include/integrator.h | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
-$(BUILD_DIR)/kh_2d.o: examples/kh_2d.c include/sph_system.h | $(BUILD_DIR)
-	$(CC) $(CFLAGS) -c examples/kh_2d.c -o $@
-
 # ----------------------------
-# Compile common sources (GPU)
+# Compile common sources GPU
 # ----------------------------
 $(BUILD_GPU)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_GPU)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
@@ -184,24 +227,53 @@ $(BUILD_GPU)/integrator.o: src/integrator.cu include/integrator.cuh | $(BUILD_GP
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
 
 # ----------------------------
-# Run
+# Run: 2D Sod shock tube
 # ----------------------------
-run_cpu: cpu
+run_sod2d_cpu: $(BIN_DIR)/sod_2d_cpu
 	./$(BIN_DIR)/sod_2d_cpu
 
-run_omp: omp
+run_sod2d_omp: $(BIN_DIR)/sod_2d_omp
 	./$(BIN_DIR)/sod_2d_omp
 
-run_gpu: gpu
+run_sod2d_gpu: $(BIN_DIR)/sod_2d_gpu
 	./$(BIN_DIR)/sod_2d_gpu
 
-run: run_cpu
+# ----------------------------
+# Run: 3D Sod shock tube
+# ----------------------------
+run_sod3d_cpu: $(BIN_DIR)/sod_3d_cpu
+	./$(BIN_DIR)/sod_3d_cpu
+
+run_sod3d_omp: $(BIN_DIR)/sod_3d_omp
+	./$(BIN_DIR)/sod_3d_omp
+
+run_sod3d_gpu: $(BIN_DIR)/sod_3d_gpu
+	./$(BIN_DIR)/sod_3d_gpu
+
+# ----------------------------
+# Run: Kelvin-Helmholtz 2D
+# ----------------------------
+run_kh_cpu: $(BIN_DIR)/kh_2d_cpu
+	./$(BIN_DIR)/kh_2d_cpu
+
+run_kh_omp: $(BIN_DIR)/kh_2d_omp
+	./$(BIN_DIR)/kh_2d_omp
+
+run_kh_gpu: $(BIN_DIR)/kh_2d_gpu
+	./$(BIN_DIR)/kh_2d_gpu
+
+# ----------------------------
+# Default run
+# ----------------------------
+run: run_sod2d_cpu
 
 # ----------------------------
 # Animation
 # ----------------------------
-animate: run
-	python3 scripts/animate_2d.py
+OUTDIR = sod_m0.001_x5.0_t5.0
+
+animate: run_sod2d_cpu
+	python3 scripts/animate_2d_with_h.py -d $(OUTDIR)
 
 # ----------------------------
 # Tests
@@ -242,15 +314,19 @@ $(BUILD_CPU)/test_integrator.o: tests/test_integrator.c | $(BUILD_CPU)
 # Clean
 # ----------------------------
 clean:
-	rm -rf build/          \
-	       bin/sod_2d      \
-	       bin/sod_2d_cpu  \
-	       bin/sod_2d_omp  \
-	       bin/sod_2d_gpu  \
-	       bin/kh_2d       \
-	       bin/output*.csv \
-	       tests/test_density    \
-	       tests/test_force      \
-	       tests/test_init       \
-	       tests/test_kernel     \
+	rm -rf build/              \
+	       bin/sod_2d_cpu      \
+	       bin/sod_2d_omp      \
+	       bin/sod_2d_gpu      \
+	       bin/sod_3d_cpu      \
+	       bin/sod_3d_omp      \
+	       bin/sod_3d_gpu      \
+	       bin/kh_2d_cpu       \
+	       bin/kh_2d_omp       \
+	       bin/kh_2d_gpu       \
+	       bin/output*.csv     \
+	       tests/test_density  \
+	       tests/test_force    \
+	       tests/test_init     \
+	       tests/test_kernel   \
 	       tests/test_integrator
