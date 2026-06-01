@@ -11,8 +11,8 @@ parser.add_argument("-d", "--dir", type=str, default=".",
                     help="Target directory containing output_*.csv files (default: current directory)")
 parser.add_argument("-o", "--outputfilename", type=str, default="kh_animation", 
                     help="Output filename without extension (default: kh_animation)")
-parser.add_argument("-f", "--format", type=str, default="gif", 
-                    help="File format, mp4 or gif (default: gif)")
+parser.add_argument("-f", "--format", type=str, default="mp4", 
+                    help="File format, mp4 or gif (default: mp4)")
 args = parser.parse_args()
 
 # 2. Find and sort CSV files
