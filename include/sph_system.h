@@ -80,6 +80,15 @@ typedef struct {
     double epsilon;
     double alpha;
     double beta;
+
+    // --- Cell-Linked List variables ---
+    double cell_size;     // size (>= max_h)
+    int num_cells_x;      // X cells
+    int num_cells_y;      // Y cells
+    int total_cells;      // = num_cells_x * num_cells_y
+    
+    int *head;            // array size = total_cells
+    int *next;            // array size = N
 } SPHSystem;
 
 

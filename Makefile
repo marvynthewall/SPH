@@ -26,7 +26,7 @@ CC_OMP = gcc-14
 NVCC   = nvcc
 
 CFLAGS_CPU = -O3 -Wall -Iinclude/
-CFLAGS_OMP = -O3 -Wall -DIFOPT -Iinclude/ -fopenmp
+CFLAGS_OMP = -O3 -Wall -Iinclude/ -fopenmp
 NVCCFLAGS  = -O3 -Iinclude/ -Xcompiler "-Wall"
 
 LDFLAGS_CPU = -lm
@@ -134,7 +134,7 @@ $(BUILD_OMP)/sod_2d.o: examples/sod_2d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_CPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
@@ -143,7 +143,7 @@ $(BUILD_OMP)/sod_3d.o: examples/sod_3d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_CPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
@@ -152,7 +152,7 @@ $(BUILD_OMP)/kh_2d.o: examples/kh_2d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 # ----------------------------
 # Compile common sources CPU

@@ -4,7 +4,6 @@
 // this is for 1-layer loop
 // factor, const = 2.0 for 2D, 3.0 for 3D
 // Eq(23)
-
 void compute_pressure_soundspeed_factor(SPHSystem *sph) {
   double GG1 = sqrt(sph->gamma * (sph->gamma - 1.0));
   double inv_dim = 1.0 / (double)sph->dim;
@@ -151,143 +150,229 @@ void compute_force(SPHSystem *sph) {
 #endif
 }
 
-// Computing force, symmetry 2-layers loop, with boundary condition
-void compute_force_xreflective_yperiodic(SPHSystem *sph) {
+
+// Computing force, symmetric 2-layers loop with boundary conditions
+void compute_force_xreflective_yperiodic_celllist(SPHSystem *sph) {
+  // 1. Initialize acceleration and thermal energy evolution rate for all real particles
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
   for (int i = 0; i < sph->N; i++) {
     sph->particles[i].ax = 0.0;
     sph->particles[i].ay = 0.0;
     sph->particles[i].dudt = 0.0;
   }
 
+  // 2. Double full-loop: For OpenMP thread-safety, each thread only writes to p_i.
+  // The workload is distributed and parallelized across all CPU cores.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
   for (int i = 0; i < sph->N; i++) {
     Particle *p_i = &sph->particles[i];
 
-    for (int j = i + 1; j < sph->N; j++) {
-      Particle *p_j = &sph->particles[j];
+    // current cell
+    int cx_i = (int)(p_i->x / sph->cell_size);
+    int cy_i = (int)(p_i->y / sph->cell_size);
 
-      double dy = p_i->y - p_j->y;
-      if (dy > 0.5 * sph->box_size_y)
-        dy -= sph->box_size_y;
-      if (dy < -0.5 * sph->box_size_y)
-        dy += sph->box_size_y;
+// --- 遍歷相鄰的 9 個網格 (包含自己所在的網格) ---
+    for (int d_cy = -1; d_cy <= 1; d_cy++) {
+      for (int d_cx = -1; d_cx <= 1; d_cx++) {
+        
+        int cx = cx_i + d_cx;
+        int cy = cy_i + d_cy;
 
-      double dxs[3] = {p_i->x - p_j->x, p_i->x + p_j->x,
-                       p_i->x + p_j->x - 2.0 * sph->box_size_x};
-      double dvxs[3] = {p_i->vx - p_j->vx, p_i->vx + p_j->vx,
-                        p_i->vx + p_j->vx};
-      int signs_j[3] = {1, -1, -1}; // The reaction force on j has opposite sign
-                                    // for mirror interactions
+        // 【Y 方向週期性邊界】網格座標折返
+        if (cy < 0) cy += sph->num_cells_y;
+        else if (cy >= sph->num_cells_y) cy -= sph->num_cells_y;
 
-      double dvy = p_i->vy - p_j->vy;
-      double max_h = fmax(p_i->h, p_j->h);
-      double mass_ratio = p_i->mass / p_j->mass;
+        // 【X 方向反射邊界】超出邊界代表是牆壁，沒有真實網格，直接跳過
+        if (cx < 0 || cx >= sph->num_cells_x) continue;
 
-      for (int k = 0; k < 3; k++) {
-        double dx = dxs[k];
-        double dvx = dvxs[k];
-        int sign_j = signs_j[k];
+        int cell_index = cx + cy * sph->num_cells_x;
+        int j = sph->head[cell_index];
 
-        double r = sqrt(dx * dx + dy * dy);
-        if (r < 1e-12 || r > max_h)
-          continue;
+        // --- 走訪該網格內的 Linked List ---
+        while (j != -1) {
+          Particle *p_j = &sph->particles[j];
 
-        double W_i, dWdr_i, dWdh_i;
-        cubic_spline_kernel(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
-        double W_j, dWdr_j, dWdh_j;
-        cubic_spline_kernel(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
+          // Y-Periodic 距離修正 (Minimum Image Convention)
+          double dy = p_i->y - p_j->y;
+          if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+          else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
 
-        double term_i =
-            p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr_i;
-        double term_j =
-            p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) * dWdr_j;
+          // ==========================================
+          // 形態 0：真實粒子交互作用
+          // ==========================================
+          if (i != j) { // 排除自己對自己產生真實作用力
+            Particle ghost_j = *p_j;
+            ghost_j.y  = p_i->y - dy; // 修正 Y 座標以符合週期距離
+            // x, vx, vy 皆維持真實狀態
+            compute_pairwise_physics(p_i, &ghost_j, sph);
+          }
 
-        double scalar_force = p_j->mass * (term_i + term_j);
+          // ==========================================
+          // 形態 1：左反射牆鏡像 (Left Mirror)
+          // ==========================================
+          // 物理防呆剪枝：只有當 i 靠近左邊界時才計算。
+          // ⚠️ 這裡必須用全局的 cell_size (即 max_h)，而非 p_i->h，
+          // 以免 p_i 的 h 很小，但 p_j 的 h 很大時，錯失了交互作用。
+          if (p_i->x < sph->cell_size) {
+            Particle ghost_j = *p_j;
+            ghost_j.x  = -p_j->x;
+            ghost_j.y  = p_i->y - dy;
+            ghost_j.vx = -p_j->vx; // 撞牆反彈，X 速度反轉
+            // vy 維持不變
+            compute_pairwise_physics(p_i, &ghost_j, sph);
+          }
 
-        double ax = -scalar_force * (dx / r);
-        double ay = -scalar_force * (dy / r);
+          // ==========================================
+          // 形態 2：右反射牆鏡像 (Right Mirror)
+          // ==========================================
+          if (p_i->x > sph->box_size_x - sph->cell_size) {
+            Particle ghost_j = *p_j;
+            ghost_j.x  = 2.0 * sph->box_size_x - p_j->x;
+            ghost_j.y  = p_i->y - dy;
+            ghost_j.vx = -p_j->vx; // 撞牆反彈，X 速度反轉
+            compute_pairwise_physics(p_i, &ghost_j, sph);
+          }
 
-        p_i->ax += ax;
-        p_i->ay += ay;
-        p_j->ax -= ax * mass_ratio * sign_j;
-        p_j->ay -= ay * mass_ratio;
-
-        double inner_product_v_dW_i =
-            dvx * (dWdr_i * dx / r) + dvy * (dWdr_i * dy / r);
-        double inner_product_v_dW_j =
-            dvx * (dWdr_j * dx / r) + dvy * (dWdr_j * dy / r);
-        p_i->dudt += p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) *
-                     p_j->mass * inner_product_v_dW_i;
-        p_j->dudt += p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) *
-                     p_i->mass * inner_product_v_dW_j;
-
-        double r_dot_v = dx * dvx + dy * dvy;
-        if (r_dot_v < 0.0) {
-          double h_ij = (p_i->h + p_j->h) / 2.0;
-          double mu_ij =
-              h_ij * r_dot_v / (r * r + sph->epsilon * (h_ij * h_ij));
-          double c_ij = (p_i->cs + p_j->cs) / 2.0;
-          double rho_ij = (p_i->rho + p_j->rho) / 2.0;
-          double PI_ij =
-              (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
-
-          double avg_inner =
-              (inner_product_v_dW_i + inner_product_v_dW_j) / 2.0;
-          p_i->dudt += p_j->mass / 2.0 * PI_ij * avg_inner;
-          p_j->dudt += p_i->mass / 2.0 * PI_ij * avg_inner;
-
-          double Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dx / r);
-          double Vay = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j) / 2.0 * dy / r);
-          p_i->ax += Vax;
-          p_i->ay += Vay;
-          p_j->ax -= Vax * mass_ratio * sign_j;
-          p_j->ay -= Vay * mass_ratio;
-        }
+          j = sph->next[j]; 
+        } // end while (j != -1)
       }
-    }
+    } // end for d_cx, d_cy
   }
 
-  // Self-mirror interactions
+  // 3. Handle Self-mirror Interactions
+  // When a particle gets close to the left or right walls, it interacts with its own mirror image.
+  // Each particle calculates this independently, so it can be parallelized with OpenMP.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
   for (int i = 0; i < sph->N; i++) {
     Particle *p_i = &sph->particles[i];
+    
+    // Two self-mirror positions: left-wall mirror and right-wall mirror
     double dxs[2] = {2.0 * p_i->x, 2.0 * (p_i->x - sph->box_size_x)};
     double dvxs[2] = {2.0 * p_i->vx, 2.0 * p_i->vx};
 
     for (int k = 0; k < 2; k++) {
-      double dx = dxs[k];
-      double dvx = dvxs[k];
-      double r = fabs(dx);
+      // Create a ghost particle representing the particle's own mirror image
+      Particle ghost_self = *p_i;
+      
+      ghost_self.x  = p_i->x - dxs[k];
+      ghost_self.vx = p_i->vx - dvxs[k];
+      // Y-direction perfectly overlaps with itself; relative distance and velocity are 0
+      ghost_self.y  = p_i->y;
+      ghost_self.vy = p_i->vy; 
 
-      if (r < 1e-12 || r > p_i->h)
-        continue;
-
-      double W, dWdr, dWdh;
-      cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
-
-      double term = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr;
-      double scalar_force = p_i->mass * (2.0 * term);
-      double ax = -scalar_force * (dx / r);
-
-      p_i->ax += ax;
-
-      double inner_product_v_dW = dvx * (dWdr * dx / r);
-      p_i->dudt += p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) *
-                   p_i->mass * inner_product_v_dW;
-
-      double r_dot_v = dx * dvx;
-      if (r_dot_v < 0.0) {
-        double mu_ij =
-            p_i->h * r_dot_v / (r * r + sph->epsilon * (p_i->h * p_i->h));
-        double PI_ij =
-            (-sph->alpha * p_i->cs * mu_ij + sph->beta * mu_ij * mu_ij) /
-            p_i->rho;
-
-        p_i->dudt += p_i->mass / 2.0 * PI_ij * inner_product_v_dW;
-        double Vax = -p_i->mass * PI_ij * (dWdr * dx / r);
-        p_i->ax += Vax;
-      }
+      // Invoke the same core physics function
+      compute_pairwise_physics(p_i, &ghost_self, sph);
     }
   }
 }
+
+
+// Computing force, symmetric 2-layers loop with boundary conditions
+void compute_force_xreflective_yperiodic(SPHSystem *sph) {
+  // 1. Initialize acceleration and thermal energy evolution rate for all real particles
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    sph->particles[i].ax = 0.0;
+    sph->particles[i].ay = 0.0;
+    sph->particles[i].dudt = 0.0;
+  }
+
+  // 2. Double full-loop: For OpenMP thread-safety, each thread only writes to p_i.
+  // The workload is distributed and parallelized across all CPU cores.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+
+    for (int j = 0; j < sph->N; j++) {
+      // Skip self-interaction; self-mirror interaction is handled separately below
+      if (i == j) continue; 
+      
+      Particle *p_j = &sph->particles[j];
+
+      // --- Handle Y-direction Periodic Boundary Condition ---
+      // Calculate relative y-displacement using the Minimum Image Convention
+      double dy = p_i->y - p_j->y;
+      dy -= (dy >  0.5 * sph->box_size_y) ? sph->box_size_y : 0.0;
+      dy += (dy < -0.5 * sph->box_size_y) ? sph->box_size_y : 0.0;
+
+      // --- Handle X-direction Reflective/Mirror Boundary Condition ---
+      // Define the 3 potential spatial configurations of particle j relative to i:
+      // Index 0: Original relative position
+      // Index 1: Mirror image behind the left boundary wall
+      // Index 2: Mirror image behind the right boundary wall
+      double dxs[3] = {
+          p_i->x - p_j->x,                         
+          p_i->x + p_j->x,                         
+          p_i->x + p_j->x - 2.0 * sph->box_size_x  
+      };
+      
+      // Mirror particles must have their X-velocity inverted to correctly simulate 
+      // the relative rebound velocity against the wall: vx_i - (-vx_j) = vx_i + vx_j
+      double dvxs[3] = {
+          p_i->vx - p_j->vx, 
+          p_i->vx + p_j->vx, 
+          p_i->vx + p_j->vx  
+      };
+
+      // Traverse all 3 spatial configurations
+      for (int k = 0; k < 3; k++) {
+        // Create a temporary ghost particle j by copying the properties of real particle j
+        Particle ghost_j = *p_j;
+
+        // Reconstruct the absolute coordinates and velocities of ghost_j based on geometric relations
+        ghost_j.x  = p_i->x - dxs[k];
+        ghost_j.y  = p_i->y - dy;
+        ghost_j.vx = p_i->vx - dvxs[k];
+        ghost_j.vy = p_i->vy - (p_i->vy - p_j->vy); // Maintain original dvy
+
+        // Reuse the core pairwise physics function.
+        // Note: When _OPENMP is defined, this function ONLY updates the first argument (p_i).
+        // The code wrapped inside #ifndef _OPENMP will be automatically disabled, 
+        // preventing any race conditions or unnecessary writes to ghost_j.
+        compute_pairwise_physics(p_i, &ghost_j, sph);
+      }
+    }
+  }
+
+  // 3. Handle Self-mirror Interactions
+  // When a particle gets close to the left or right walls, it interacts with its own mirror image.
+  // Each particle calculates this independently, so it can be parallelized with OpenMP.
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+    
+    // Two self-mirror positions: left-wall mirror and right-wall mirror
+    double dxs[2] = {2.0 * p_i->x, 2.0 * (p_i->x - sph->box_size_x)};
+    double dvxs[2] = {2.0 * p_i->vx, 2.0 * p_i->vx};
+
+    for (int k = 0; k < 2; k++) {
+      // Create a ghost particle representing the particle's own mirror image
+      Particle ghost_self = *p_i;
+      
+      ghost_self.x  = p_i->x - dxs[k];
+      ghost_self.vx = p_i->vx - dvxs[k];
+      // Y-direction perfectly overlaps with itself; relative distance and velocity are 0
+      ghost_self.y  = p_i->y;
+      ghost_self.vy = p_i->vy; 
+
+      // Invoke the same core physics function
+      compute_pairwise_physics(p_i, &ghost_self, sph);
+    }
+  }
+}
+
 
 void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
@@ -528,10 +613,8 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
         Particle *p_i = &sph->particles[i];
 
         for (int j = 0; j < sph->N; j++) {
-
-            if (i == j) {
-                continue;
-            }
+            if (i == j) continue;
+            
 
             Particle *p_j = &sph->particles[j];
 

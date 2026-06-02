@@ -3,6 +3,7 @@
 
 #include "sph_system.h"
 #define min(a, b) (((a) < (b)) ? (a) : (b))
+void build_cell_list(SPHSystem *sph);
 
 double compute_timestep(SPHSystem *sph);
 double compute_timestep_signal_velocity(SPHSystem *sph);

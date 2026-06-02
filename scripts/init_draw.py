@@ -42,7 +42,7 @@ ax.add_collection(patch_col)
 # 2. Draw particle center points
 # ---------------------------------------------------------
 # Set zorder=2 to ensure points are drawn on top of the circles (zorder=1)
-sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=1, zorder=2, cmap='viridis')
+sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=0.2, zorder=2, cmap='viridis')
 
 # Add colorbar and labels
 fig.colorbar(sc, ax=ax, label="density")

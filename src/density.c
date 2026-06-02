@@ -319,6 +319,109 @@ void compute_density_xreflective_yperiodic(SPHSystem *sph) {
   }
 }
 
+
+void compute_density_xreflective_yperiodic_celllist(SPHSystem *sph) {
+
+  // recalculate the cell list
+  build_cell_list(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    double local_rho = 0.0;
+    double drhodh = 0.0;
+    Particle *p_i = &sph->particles[i];
+
+    // cell coord
+    int cx_i = (int)(p_i->x / sph->cell_size);
+    int cy_i = (int)(p_i->y / sph->cell_size);
+
+    // find the 9 cells surrounding
+    for(int d_cy = -1; d_cy<=1; d_cy++){
+      for(int d_cx = -1; d_cx <= 1; d_cx ++){
+        // the target cell
+        int cx = cx_i + d_cx;
+        int cy = cy_i + d_cy;
+
+        // deal with the y periodic
+        cy += (cy<0) ? sph->num_cells_y : 0;
+        cy -= (cy >= sph->num_cells_y) ? sph->num_cells_y : 0;
+
+
+        // deal with the X reflective
+        // ignore the side wall
+        if (cx<0 || cx >= sph->num_cells_x)
+          continue;
+
+        int cell_index = cx + cy * sph->num_cells_x;
+
+        int j = sph->head[cell_index];
+        while (j != -1) {
+          Particle *p_j = &sph->particles[j];
+
+          // 基礎相對位置
+          double dy = p_i->y - p_j->y;
+
+          // Y-Periodic 距離修正 (Minimum Image)
+          if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+          else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
+
+          // ==========================================
+          // 物理計算 1：真實粒子交互作用 (包含自己)
+          // ==========================================
+          double dx = p_i->x - p_j->x;
+          double r = sqrt(dx * dx + dy * dy);
+
+          if (r <= p_i->h) {
+            double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+            cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
+            local_rho += p_j->mass * W;
+            drhodh += p_j->mass * dWdh;
+          }
+
+          // ==========================================
+          // 物理計算 2：左反射牆鏡像 (Left Mirror)
+          // 模擬 j 在左牆外的鏡像對 i 的影響
+          // ==========================================
+          // 只有當 i 靠近左邊界時，才有可能受到左鏡像的影響
+          if (p_i->x < p_i->h) {
+              double dx_L = p_i->x + p_j->x; // x_i - (-x_j)
+              double r_L = sqrt(dx_L * dx_L + dy * dy);
+              if (r_L <= p_i->h) {
+                double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+                cubic_spline_kernel(r_L, p_i->h, &W, &dWdr, &dWdh);
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+              }
+          }
+
+          // ==========================================
+          // 物理計算 3：右反射牆鏡像 (Right Mirror)
+          // 模擬 j 在右牆外的鏡像對 i 的影響
+          // ==========================================
+          // 只有當 i 靠近右邊界時，才有可能受到右鏡像的影響
+          if (p_i->x > sph->box_size_x - p_i->h) {
+              double dx_R = p_i->x + p_j->x - 2.0 * sph->box_size_x;
+              double r_R = sqrt(dx_R * dx_R + dy * dy);
+              if (r_R <= p_i->h) {
+                double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+                cubic_spline_kernel(r_R, p_i->h, &W, &dWdr, &dWdh);
+                local_rho += p_j->mass * W;
+                drhodh += p_j->mass * dWdh;
+              }
+          }
+
+          // to next particle, if no, the value is -1
+          j = sph->next[j];
+        } // end while
+      }
+    }
+    p_i->rho = local_rho;
+    p_i->drho_dh = drhodh;
+  }
+}
+
 void compute_density_xperiodic_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)

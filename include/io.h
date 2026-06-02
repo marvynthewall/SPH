@@ -4,7 +4,7 @@
  * Write SPH particle data to a CSV file.
  *
  * Output columns:
- * id, x, y, vx, vy, ax, ay, m, rho, P, u, h
+ * id, x, y, z, vx, vy, vz, ax, ay, az, m, rho, P, u, h
  */
 
 void write_csv(SPHSystem * sph ,const char * filename);

@@ -11,11 +11,11 @@ int main(int argc, char *argv[]) {
   char output_folder[128];
   int custom_folder_set = 0;
   double mass = 0.001; 
-  char *mass_c = "0.001";
+  const char *mass_c = "0.001";
   double x = 5.0;
-  char *x_c = "5.0";
+  const char *x_c = "5.0";
   double t_end = 5.0;
-  char *t_c = "5.0";
+  const char *t_c = "5.0";
   int num_threads = 0;
 
   for (int i = 1; i < argc; i++) {
@@ -107,6 +107,16 @@ int main(int argc, char *argv[]) {
   sph.box_size_y = 1.0;
   init_uniform_box(&sph, 16, 16);
   */
+  // timing
+#ifdef _OPENMP
+  double start_time_omp=0.0, new_step_time=0.0, pre_step_time = 0.0;
+  start_time_omp = omp_get_wtime();
+  printf("Starting simulation with OpenMP acceleration...\n");
+#else
+  struct timeval run_t_start, run_t_init, run_t_end, run_t_new, run_t_old;
+  gettimeofday(&run_t_start, NULL);
+  printf("Starting simulation on Single Core...\n");
+#endif
 
   // sod_2d_3 init
   init_sod_2d_3(&sph, x, y, mass);
@@ -117,11 +127,19 @@ int main(int argc, char *argv[]) {
   sph.alpha = 1.0;
   sph.beta = 2.0;
   sph.epsilon = 0.01;
-
+  
+  double eta = 2.3; 
+  for (int i = 0; i < sph.N; i++) {
+      Particle *p = &sph.particles[i];
+      double target_rho = (p->x < 0.5 * x) ? 1.0 : 0.125; 
+      
+      // 直接套用 2D adaptive h 倒推公式
+      p->h = eta * sqrt(p->mass / target_rho);
+  }
   // Initial hydrodynamic computation before taking the first step
-  compute_density_xreflective_yperiodic(&sph);
+  compute_density_xreflective_yperiodic_celllist(&sph);
   compute_pressure_soundspeed_factor(&sph);
-  compute_force_xreflective_yperiodic(&sph);
+  compute_force_xreflective_yperiodic_celllist(&sph);
 
   double t = 0.0;
   int step = 0;
@@ -129,21 +147,19 @@ int main(int argc, char *argv[]) {
   double dt_output = 0.01;
   double next_output_time = 0.0;
 
-  printf("\nInitialized, start simulation...\n");
 
-  // timing
+  double init_time = 0.0;
 #ifdef _OPENMP
-  double start_time_omp=0.0;
-  start_time_omp = omp_get_wtime();
-  printf("Starting simulation with OpenMP acceleration...\n");
+  init_time = omp_get_wtime() - start_time_omp;
 #else
-  struct timeval run_t_start, run_t_end;
-  gettimeofday(&run_t_start, NULL);
-  printf("Starting simulation on Single Core...\n");
+  gettimeofday(&run_t_init, NULL);
+  init_time = (run_t_init.tv_sec - run_t_start.tv_sec) + (run_t_init.tv_usec - run_t_start.tv_usec) / 1000000.0;
+  run_t_old = init_time;
 #endif
+  printf("Initialized in: %.3f seconds, start simulation\n", init_time);
 
   while (t < t_end + dt_output) {
-    if (t >= next_output_time) {
+    if (t >= next_output_time - 1e-9) {
       printf("output_time: %.4f\n", t);
       char filename[256];
       snprintf(filename, sizeof(filename), "%s/output_%04d.csv", output_folder, output_step);
@@ -158,18 +174,29 @@ int main(int argc, char *argv[]) {
       }
       output_step++;
       next_output_time += dt_output;
-      if (t >= t_end)
-        break;
     }
+    if (t >= t_end - 1e-9)
+      break;
 
     // integrate one step
     // double dt = step_leapfrog_kdk_xreflective_yperiodic(
-    //     &sph, compute_timestep, compute_force_xreflective_yperiodic);
+    //     &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic);
     double dt = step_leapfrog_kdk_xreflective_yperiodic(
-        &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic);
+        &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic_celllist);
     t += dt;
-    printf("sod t:%.10f, dt: %.10f\n", t, dt);
+    // printf("sod t:%.10f, dt: %.10f\n", t, dt);
     step++;
+    double step_time;
+#ifdef _OPENMP
+    new_step_time = omp_get_wtime();
+    step_time = new_step_time - prev_step_time;
+    prev_step_time = new_step_time;
+#else
+    gettimeofday(&run_t_new, NULL);
+    step_time = (run_t_new.tv_sec - run_t_old.tv_sec) + (run_t_new.tv_usec - run_t_old.tv_usec) / 1000000.0;
+    run_t_old = run_t_new;
+#endif
+    printf("sod t:%.10f, dt: %.10f, step simulation time: %f\n", t, dt, step_time);
   }
 
   double elapsed_time = 0.0;
@@ -184,6 +211,8 @@ int main(int argc, char *argv[]) {
   printf("====================================\n");
   printf("Simulation finished!\n");
   printf("Total Execution Time: %.3f seconds\n", elapsed_time);
+  printf("Initialize Time: %.3f seconds\n", init_time);
+  printf("Simulation Time: %.3f seconds\n", elapsed_time - init_time);
   printf("Total Outputfile numbers: %d\n", output_step);
   printf("Mass of particles: %f\n", mass);
   printf("====================================\n");
