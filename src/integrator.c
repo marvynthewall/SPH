@@ -433,9 +433,13 @@ double step_leapfrog_kdk_xreflective_yperiodic(
 
     sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
 
+#ifdef IFOPT
+    sph->particles[i].u = fmax(1e-10, sph->particles[i].u);
+#else
     if (sph->particles[i].u < 1e-10) {
       sph->particles[i].u = 1e-10;
     }
+#endif
   }
 
 #ifdef _OPENMP
@@ -446,7 +450,17 @@ double step_leapfrog_kdk_xreflective_yperiodic(
 
     sph->particles[i].x += sph->particles[i].vx * dt;
     sph->particles[i].y += sph->particles[i].vy * dt;
-
+#ifdef IFOPT
+    sph->particles[i].y -= (sph->particles[i].y >= sph->box_size_y) ? sph->box_size_y : 0.0;
+    sph->particles[i].y += (sph->particles[i].y < 0.0) ? sph->box_size_y : 0.0;
+    
+    int hit_left = (sph->particles[i].x < 0.0);
+    int hit_right = (sph->particles[i].x > sph->box_size_x);
+    sph->particles[i].x   = hit_left ? -sph->particles[i].x : sph->particles[i].x ;
+    sph->particles[i].vx  = hit_left ? -sph->particles[i].vx : sph->particles[i].vx;
+    sph->particles[i].x   = hit_right ? 2.0 * sph->particles[i].x - sph->particles[i].x : sph->particles[i].x ;
+    sph->particles[i].vx  = hit_right ? -sph->particles[i].vx : sph->particles[i].vx;
+#else
     // Y-Periodic
     if (sph->particles[i].y >= sph->box_size_y)
       sph->particles[i].y -= sph->box_size_y;
@@ -462,6 +476,7 @@ double step_leapfrog_kdk_xreflective_yperiodic(
       sph->particles[i].x = 2.0 * sph->box_size_x - sph->particles[i].x;
       sph->particles[i].vx = -sph->particles[i].vx;
     }
+#endif
   }
 
   sph->time += dt;
@@ -483,9 +498,13 @@ double step_leapfrog_kdk_xreflective_yperiodic(
 
     sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
 
+#ifdef IFOPT
+    sph->particles[i].u = fmax(1e-10, sph->particles[i].u);
+#else
     if (sph->particles[i].u < 1e-10) {
       sph->particles[i].u = 1e-10;
     }
+#endif
   }
   return dt;
 }

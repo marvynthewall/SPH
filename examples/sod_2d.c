@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
-  printf("   SPH 模擬程式啟動中...             \n");
+  printf("   SPH Simulation Starting...             \n");
   printf("====================================\n");
 
   char output_folder[128];
@@ -126,10 +126,10 @@ int main(int argc, char *argv[]) {
   double t = 0.0;
   int step = 0;
   int output_step = 0;
-  double dt_output = 1.0;
+  double dt_output = 0.1;
   double next_output_time = 0.0;
 
-  printf("\n初始化完成,開始模擬...\n");
+  printf("\nStarting simulation...\n");
 
   // timing
 #ifdef _OPENMP
