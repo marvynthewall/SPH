@@ -23,6 +23,14 @@ void allocate_sph_system(SPHSystem *sph, int N)
     sph->cfl   = 0.25;
     init_sph_parameter(sph);
 
+    sph->cell_size = 0.0;
+    sph->num_cells_x = 0;
+    sph->num_cells_y = 0;
+    sph->total_cells = 0;
+    sph->head = NULL;
+    sph->next = (int *)malloc(N * sizeof(int));
+
+
     sph->particles = (Particle *)malloc(N * sizeof(Particle));
 
     if (sph->particles == NULL) {
@@ -77,4 +85,9 @@ void free_sph_system(SPHSystem *sph)
     sph->epsilon = 0.0;
     sph->alpha = 0.0;
     sph->beta = 0.0;
+
+    free(sph->head); 
+    sph->head = NULL;
+    free(sph->next); 
+    sph->next = NULL;
 }

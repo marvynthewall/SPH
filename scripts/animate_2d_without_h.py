@@ -28,27 +28,31 @@ if not files:
 print(f"Found {len(files)} files. Initializing plot...")
 
 # 3. 建立畫布與初始設定
-fig, ax = plt.subplots(figsize=(15, 3))
+# 調整畫布比例（例如 16:4），並加上 layout='constrained' 自動優化排版，減少周圍留白
+fig, ax = plt.subplots(figsize=(16, 4), layout='constrained')
 
 # 讀取第一幀資料
 df = pd.read_csv(files[0])
 
-# --- 繪製初始的粒子中心 ---
-# s=5 是點的大小，可以根據你的視覺需求調整
-sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=5, zorder=2, vmin=0.0, vmax=1.2, cmap='viridis')
+# --- 繪製初始的粒子中心 (前景層) ---
+# 【調整】將 s 從 5 縮小到 1 或 2，讓點點看起來更細緻
+sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=1.5, zorder=2, vmin=0.0, vmax=1.2, cmap='viridis')
 
 # 圖表格式設定
-fig.colorbar(sc, ax=ax, label="Density")
+# 【調整】使用 pad 控制 colorbar 與主圖的距離，shrink 控制它的長度（不讓它撐開上下留白）
+cbar = fig.colorbar(sc, ax=ax, label="Density", pad=0.02, shrink=0.7)
+
 ax.set_xlabel("x")
 ax.set_ylabel("y")
 ax.set_xlim(0, args.x_lim)
 ax.set_ylim(0, 1.0)
 
-# 強制 x, y 軸等比例
+# 強制 x, y 軸等比例，避免圓形變成橢圓
 ax.set_aspect('equal')
 
+# 【調整】將標題稍微往上抬，或利用 pad 增加間距，避免壓縮到主圖
 first_filename = os.path.basename(files[0])
-title = ax.set_title(f"SPH 2D Sod Shock Tube - {first_filename}")
+title = ax.set_title(f"SPH 2D Sod Shock Tube - {first_filename}", pad=10)
 
 # 4. 定義動畫更新函數
 def update(frame):

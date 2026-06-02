@@ -5,6 +5,7 @@ import matplotlib.animation as animation
 import glob
 import argparse
 import os
+import random
 
 # 引入解析解函數
 from sod_exact import get_sod_exact_rho
@@ -17,10 +18,14 @@ parser.add_argument("-o", "--outputfilename", type=str, default="sod_line_densit
                     help="Output filename without extension (default: sod_line_density)")
 parser.add_argument("-x", "--x_lim", type=float, default=5.0, 
                     help="Size of x direction limit (default: 5.0)")
-parser.add_argument("-y", "--y_targets", type=float, nargs='+', default=[0.5], 
+parser.add_argument("-y", "--y_targets", type=float, nargs='+', 
                     help="One or more Y coordinates for the sampling lines (e.g., -y 0.2 0.5 0.8)")
+parser.add_argument("-n", "--n_targets", type=int, default =5, 
+                    help="Y coordinates random sample N lines (default: 5)")
 parser.add_argument("-f", "--format", type=str, default="mp4", 
                     help="File format, mp4 or gif (default: mp4)")
+parser.add_argument("-a", "--avg", type=bool, default=True, 
+                    help="averaging the sample Y coordinates (default: True)")
 args = parser.parse_args()
 
 # 2. Kernel 函數定義
@@ -65,10 +70,23 @@ x_sample = np.linspace(0, args.x_lim, 5000)
 # 4. 建立畫布與初始設定
 fig, ax = plt.subplots(figsize=(10, 6))
 
+if args.y_targets is not None:
+    y_targets = args.y_targets
+else:
+    y_targets = [random.random() for _ in range(args.n_targets)]
+
+print("Y samples at: ")
+print(y_targets)
+
+
 lines = []
-for y_val in args.y_targets:
-    line, = ax.plot([], [], lw=2, alpha=0.5, label=f'SPH y = {y_val}')
+if args.avg:
+    line, = ax.plot([], [], lw=2, alpha=0.8, color='tab:blue', label='SPH Average Density')
     lines.append(line)
+else:
+    for y_val in y_targets:
+        line, = ax.plot([], [], lw=2, alpha=0.5, label=f'SPH y = {y_val}')
+        lines.append(line)
 
 # 新增：建立一條解析解的線 (黑色虛線)
 exact_line, = ax.plot([], [], 'k--', lw=1.5, label='Analytical Solution')
@@ -101,17 +119,38 @@ def update(frame):
     m_part = df['m'].values
     h = df['h'].values[0] 
     
-    for idx, y_target in enumerate(args.y_targets):
-        rho_sample = np.zeros_like(x_sample)
+# 💡 根據 args.avg 走不同的密度計算與線條更新邏輯V
+    if args.avg:
+        # 建立一個累加密度的陣列
+        rho_sum = np.zeros_like(x_sample)
         
-        for i, x_s in enumerate(x_sample):
-            r = np.sqrt((x_part - x_s)**2 + (y_part - y_target)**2)
-            mask = r < h
-            if np.any(mask):
-                w = cubic_spline_kernel_2d(r[mask], h)
-                rho_sample[i] = np.sum(m_part[mask] * w)
-                
-        lines[idx].set_data(x_sample, rho_sample)
+        for y_target in y_targets:
+            rho_sample = np.zeros_like(x_sample)
+            for i, x_s in enumerate(x_sample):
+                r = np.sqrt((x_part - x_s)**2 + (y_part - y_target)**2)
+                mask = r < h
+                if np.any(mask):
+                    w = cubic_spline_kernel_2d(r[mask], h)
+                    rho_sample[i] = np.sum(m_part[mask] * w)
+            rho_sum += rho_sample
+        
+        # 取所有 y_target 的平均值，並更新到唯一的 lines[0]
+        rho_avg = rho_sum / len(y_targets)
+        lines[0].set_data(x_sample, rho_avg)
+        
+    else:
+        # 原本的邏輯：每條 y_target 各自畫一條線
+        for idx, y_target in enumerate(y_targets):
+            rho_sample = np.zeros_like(x_sample)
+
+            for i, x_s in enumerate(x_sample):
+                r = np.sqrt((x_part - x_s)**2 + (y_part - y_target)**2)
+                mask = r < h
+                if np.any(mask):
+                    w = cubic_spline_kernel_2d(r[mask], h)
+                    rho_sample[i] = np.sum(m_part[mask] * w)
+
+            lines[idx].set_data(x_sample, rho_sample)
         
     # 計算並更新解析解
     # x0 設定為管子的正中央 (args.x_lim / 2.0)

@@ -56,7 +56,7 @@ OBJS_GPU = $(foreach s,$(SRCS_COMMON),$(BUILD_GPU)/$(s).o) \
 # ----------------------------
 # Default target
 # ----------------------------
-all: cpu
+all: cpu omp gpu
 
 cpu: $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/kh_2d_cpu
 	@echo "[Standard CPU Compilation Complete]"
@@ -134,7 +134,7 @@ $(BUILD_OMP)/sod_2d.o: examples/sod_2d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_CPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
@@ -143,7 +143,7 @@ $(BUILD_OMP)/sod_3d.o: examples/sod_3d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/sod_3d.o: examples/sod_3d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_CPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
@@ -152,7 +152,7 @@ $(BUILD_OMP)/kh_2d.o: examples/kh_2d.c | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
 $(BUILD_GPU)/kh_2d.o: examples/kh_2d.c | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 # ----------------------------
 # Compile common sources CPU
