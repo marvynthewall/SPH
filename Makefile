@@ -56,7 +56,7 @@ OBJS_GPU = $(foreach s,$(SRCS_COMMON),$(BUILD_GPU)/$(s).o) \
 # ----------------------------
 # Default target
 # ----------------------------
-all: cpu
+all: cpu omp gpu
 
 cpu: $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/kh_2d_cpu
 	@echo "[Standard CPU Compilation Complete]"

@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
-  printf("   SPH 模擬程式啟動中...             \n");
+  printf("   SPH Simulation starting...             \n");
   printf("====================================\n");
 
   char output_folder[128];
@@ -87,13 +87,13 @@ int main(int argc, char *argv[]) {
   SPHSystem sph;
   double y = 1.0;
 
-  // 1. 在進入迴圈前開啟 time_log.csv
+  // time_log.csv
   char log_filename[256];
   snprintf(log_filename, sizeof(log_filename), "%s/time_log.csv", output_folder);
   FILE *time_log = fopen(log_filename, "w");
 
   if (time_log != NULL) {
-      // 寫入 CSV 標頭
+      // csv header
       fprintf(time_log, "frame,t\n");
   } else {
       printf("Warning: Could not open %s for writing.\n", log_filename);
@@ -126,10 +126,10 @@ int main(int argc, char *argv[]) {
   double t = 0.0;
   int step = 0;
   int output_step = 0;
-  double dt_output = 1.0;
+  double dt_output = 0.01;
   double next_output_time = 0.0;
 
-  printf("\n初始化完成,開始模擬...\n");
+  printf("\nInitialized, start simulation...\n");
 
   // timing
 #ifdef _OPENMP
