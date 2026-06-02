@@ -26,7 +26,7 @@ CC_OMP = gcc-14
 NVCC   = nvcc
 
 CFLAGS_CPU = -O3 -Wall -Iinclude/
-CFLAGS_OMP = -O3 -Wall -Iinclude/ -fopenmp
+CFLAGS_OMP = -O3 -Wall -DIFOPT -Iinclude/ -fopenmp
 NVCCFLAGS  = -O3 -Iinclude/ -Xcompiler "-Wall"
 
 LDFLAGS_CPU = -lm

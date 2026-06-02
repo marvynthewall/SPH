@@ -5,7 +5,7 @@
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
-  printf("   SPH Simulation starting...             \n");
+  printf("   SPH Simulation Starting...             \n");
   printf("====================================\n");
 
   char output_folder[128];
