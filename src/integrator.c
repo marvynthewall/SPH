@@ -7,7 +7,7 @@
 void build_cell_list(SPHSystem *sph) {
     // 1. find the max h, for the safe grid size
     double max_h = 0.0;
-    #ifdef __OPENMP
+    #ifdef _OPENMP
     #pragma omp parallel for reduction(max:max_h)
     #endif
     for (int i = 0; i < sph->N; i++) {
@@ -17,7 +17,14 @@ void build_cell_list(SPHSystem *sph) {
     }
     
     // prevent too many cells
-    if (max_h < 1e-4) max_h = 1e-4; 
+    if (max_h < 1e-4) max_h = 1e-4;
+    // prevent too many cells causing Integer Overflow and OOM!
+    // double min_cell_x = sph->box_size_x / 2000.0; // 確保 X 軸最多切 2000 格
+    // double min_cell_y = sph->box_size_y / 2000.0;
+    // double safe_min_h = fmax(min_cell_x, min_cell_y);
+    // safe_min_h = fmax(safe_min_h, 1e-4); // 保留原本的絕對底線
+
+    // max_h = max(max_h, safe_min_h);
     
     // 2. cell size
     sph->cell_size = max_h; 
@@ -35,7 +42,7 @@ void build_cell_list(SPHSystem *sph) {
     }
     
     // 5. initialize the head
-    #ifdef __OPENMP
+    #ifdef _OPENMP
     #pragma omp parallel for
     #endif
     for (int c = 0; c < sph->total_cells; c++) {
