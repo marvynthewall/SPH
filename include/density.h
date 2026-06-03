@@ -21,6 +21,7 @@
  */
 void compute_density(SPHSystem *sph);
 void compute_density_3d(SPHSystem *sph);
+void compute_density_1d_xreflective(SPHSystem *sph);
 void compute_density_xreflective_yperiodic(SPHSystem *sph);
 void compute_density_xperiodic_yperiodic(SPHSystem *sph);
 void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph);

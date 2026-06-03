@@ -709,3 +709,116 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
         }
     }
 }
+
+__attribute__((always_inline)) static inline void compute_pairwise_physics_1d(
+    Particle *p_i, Particle *p_j, SPHSystem *sph) {
+  double dx = p_i->x - p_j->x;
+  double r = fabs(dx);
+  if (r < 1e-12) return;
+
+  double max_h = fmax(p_i->h, p_j->h);
+  if (r > max_h) return;
+
+  double dvx = p_i->vx - p_j->vx;
+
+  double W_i, dWdr_i, dWdh_i;
+  cubic_spline_kernel_1d(r, p_i->h, &W_i, &dWdr_i, &dWdh_i);
+  double W_j, dWdr_j, dWdh_j;
+  cubic_spline_kernel_1d(r, p_j->h, &W_j, &dWdr_j, &dWdh_j);
+
+  double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * dWdr_i;
+  double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) * dWdr_j;
+  double scalar_force = p_j->mass * (term_i + term_j);
+
+  double ax = -scalar_force * (dx / r);
+  p_i->ax += ax;
+
+  double inner_product_v_dW_i = dvx * (dWdr_i * dx / r);
+  double inner_product_v_dW_j = dvx * (dWdr_j * dx / r);
+
+  p_i->dudt += p_i->factor * p_i->pressure / (p_i->rho * p_i->rho) * p_j->mass * inner_product_v_dW_i;
+
+  double r_dot_v = dx * dvx;
+  double Vax = 0.0;
+
+  if (r_dot_v < 0.0) {
+    double h_ij = (p_i->h + p_j->h) / 2.0;
+    double mu_ij = h_ij * r_dot_v / (r * r + sph->epsilon * (h_ij * h_ij));
+    double c_ij = (p_i->cs + p_j->cs) / 2.0;
+    double rho_ij = (p_i->rho + p_j->rho) / 2.0;
+    double PI_ij = (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
+
+    double avg_inner = (inner_product_v_dW_i + inner_product_v_dW_j) / 2.0;
+    p_i->dudt += p_j->mass / 2.0 * PI_ij * avg_inner;
+
+    Vax = -p_j->mass * PI_ij * ((dWdr_i + dWdr_j)/2.0 * dx/r);
+    p_i->ax += Vax;
+#ifndef _OPENMP
+    p_j->dudt += p_i->mass / 2.0 * PI_ij * avg_inner;
+#endif
+  }
+
+#ifndef _OPENMP
+  double mass_ratio = p_i->mass / p_j->mass;
+  p_j->ax -= (ax + Vax) * mass_ratio;
+  p_j->dudt += p_j->factor * p_j->pressure / (p_j->rho * p_j->rho) * p_i->mass * inner_product_v_dW_j;
+#endif
+}
+
+void compute_force_1d_xreflective(SPHSystem *sph) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    sph->particles[i].ax = 0.0;
+    sph->particles[i].dudt = 0.0;
+  }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+
+    for (int j = 0; j < sph->N; j++) {
+      if (i == j) continue;
+
+      Particle *p_j = &sph->particles[j];
+
+      double dxs[3] = {
+          p_i->x - p_j->x,
+          p_i->x + p_j->x,
+          p_i->x + p_j->x - 2.0 * sph->box_size_x
+      };
+
+      double dvxs[3] = {
+          p_i->vx - p_j->vx,
+          p_i->vx + p_j->vx,
+          p_i->vx + p_j->vx
+      };
+
+      for (int k = 0; k < 3; k++) {
+        Particle ghost_j = *p_j;
+        ghost_j.x = p_i->x - dxs[k];
+        ghost_j.vx = p_i->vx - dvxs[k];
+        compute_pairwise_physics_1d(p_i, &ghost_j, sph);
+      }
+    }
+  }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    Particle *p_i = &sph->particles[i];
+    double dxs[2] = {2.0 * p_i->x, 2.0 * (p_i->x - sph->box_size_x)};
+    double dvxs[2] = {2.0 * p_i->vx, 2.0 * p_i->vx};
+
+    for (int k = 0; k < 2; k++) {
+      Particle ghost_self = *p_i;
+      ghost_self.x = p_i->x - dxs[k];
+      ghost_self.vx = p_i->vx - dvxs[k];
+      compute_pairwise_physics_1d(p_i, &ghost_self, sph);
+    }
+  }
+}

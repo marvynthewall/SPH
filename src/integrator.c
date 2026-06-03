@@ -713,3 +713,54 @@ double step_leapfrog_kdk_xreflective_yzperiodic_3d(
 
     return dt;
 }
+
+double step_leapfrog_kdk_1d_xreflective(SPHSystem *sph, double (*calculate_time_step)(SPHSystem *), void (*compute_forces)(SPHSystem *)) {
+  double dt = calculate_time_step(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
+    sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
+    sph->particles[i].u = fmax(1e-10, sph->particles[i].u);
+  }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    double x = sph->particles[i].x + sph->particles[i].vx * dt;
+    double vx = sph->particles[i].vx;
+    double box_x = sph->box_size_x;
+
+    int hit_left = (x < 0.0);
+    x = hit_left ? -x : x;
+    vx = hit_left ? -vx : vx;
+
+    int hit_right = (x > box_x);
+    x = hit_right ? (2.0 * box_x - x) : x;
+    vx = hit_right ? -vx : vx;
+
+    sph->particles[i].x = x;
+    sph->particles[i].vx = vx;
+  }
+
+  sph->time += dt;
+
+  update_adaptive_h(sph, 20, 1e-4, 2.3, compute_density_1d_xreflective);
+  compute_density_1d_xreflective(sph);
+  compute_pressure_soundspeed_factor(sph);
+  compute_forces(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    sph->particles[i].vx += 0.5 * sph->particles[i].ax * dt;
+    sph->particles[i].u += 0.5 * sph->particles[i].dudt * dt;
+    sph->particles[i].u = fmax(1e-10, sph->particles[i].u);
+  }
+
+  return dt;
+}

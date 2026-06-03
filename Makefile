@@ -3,8 +3,9 @@
 # ============================================================
 
 .PHONY: all cpu omp gpu \
-        sod_2d sod_3d kh_2d \
+        sod_1d sod_2d sod_3d kh_2d \
         clean run \
+        run_sod1d_cpu run_sod1d_omp run_sod1d_gpu \
         run_sod2d_cpu run_sod2d_omp run_sod2d_gpu \
         run_sod3d_cpu run_sod3d_omp run_sod3d_gpu \
         run_kh_cpu run_kh_omp run_kh_gpu \
@@ -58,13 +59,13 @@ OBJS_GPU = $(foreach s,$(SRCS_COMMON),$(BUILD_GPU)/$(s).o) \
 # ----------------------------
 all: cpu omp gpu
 
-cpu: $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/kh_2d_cpu
+cpu: $(BIN_DIR)/sod_1d_cpu $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR)/kh_2d_cpu
 	@echo "[Standard CPU Compilation Complete]"
 
-omp: $(BIN_DIR)/sod_2d_omp $(BIN_DIR)/sod_3d_omp $(BIN_DIR)/kh_2d_omp
+omp: $(BIN_DIR)/sod_1d_omp $(BIN_DIR)/sod_2d_omp $(BIN_DIR)/sod_3d_omp $(BIN_DIR)/kh_2d_omp
 	@echo "[OpenMP Compilation Complete]"
 
-# gpu: $(BIN_DIR)/sod_2d_gpu $(BIN_DIR)/sod_3d_gpu $(BIN_DIR)/kh_2d_gpu
+# gpu: $(BIN_DIR)/sod_1d_gpu $(BIN_DIR)/sod_2d_gpu $(BIN_DIR)/sod_3d_gpu $(BIN_DIR)/kh_2d_gpu
 # 	@echo "[CUDA GPU Compilation Complete]"
 
 gpu: $(BIN_DIR)/sod_2d_gpu
@@ -83,6 +84,20 @@ $(BUILD_GPU):
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
+
+# ============================================================
+# 1D Sod shock tube
+# ============================================================
+sod_1d: $(BIN_DIR)/sod_1d_cpu $(BIN_DIR)/sod_1d_omp $(BIN_DIR)/sod_1d_gpu
+
+$(BIN_DIR)/sod_1d_cpu: $(OBJS_CPU) $(BUILD_CPU)/sod_1d.o | $(BIN_DIR)
+	$(CC_CPU) $(CFLAGS_CPU) -o $@ $^ $(LDFLAGS_CPU)
+
+$(BIN_DIR)/sod_1d_omp: $(OBJS_OMP) $(BUILD_OMP)/sod_1d.o | $(BIN_DIR)
+	$(CC_OMP) $(CFLAGS_OMP) -o $@ $^ $(LDFLAGS_OMP)
+
+$(BIN_DIR)/sod_1d_gpu: $(OBJS_GPU) $(BUILD_GPU)/sod_1d.o | $(BIN_DIR)
+	$(NVCC) $(NVCCFLAGS) -o $@ $^ $(LDFLAGS_GPU)
 
 # ============================================================
 # 2D Sod shock tube
@@ -129,6 +144,15 @@ $(BIN_DIR)/kh_2d_gpu: $(OBJS_GPU) $(BUILD_GPU)/kh_2d.o | $(BIN_DIR)
 # ----------------------------
 # Compile examples
 # ----------------------------
+$(BUILD_CPU)/sod_1d.o: examples/sod_1d.c | $(BUILD_CPU)
+	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
+
+$(BUILD_OMP)/sod_1d.o: examples/sod_1d.c | $(BUILD_OMP)
+	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
+
+$(BUILD_GPU)/sod_1d.o: examples/sod_1d.c | $(BUILD_GPU)
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
+
 $(BUILD_CPU)/sod_2d.o: examples/sod_2d.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
 
@@ -221,6 +245,18 @@ $(BUILD_GPU)/force.o: src/force.cu include/force.cuh | $(BUILD_GPU)
 
 $(BUILD_GPU)/integrator.o: src/integrator.cu include/integrator.cuh | $(BUILD_GPU)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+
+# ----------------------------
+# Run: 1D Sod shock tube
+# ----------------------------
+run_sod1d_cpu: $(BIN_DIR)/sod_1d_cpu
+	./$(BIN_DIR)/sod_1d_cpu
+
+run_sod1d_omp: $(BIN_DIR)/sod_1d_omp
+	./$(BIN_DIR)/sod_1d_omp
+
+run_sod1d_gpu: $(BIN_DIR)/sod_1d_gpu
+	./$(BIN_DIR)/sod_1d_gpu
 
 # ----------------------------
 # Run: 2D Sod shock tube

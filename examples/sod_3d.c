@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
     double mass = 0.001;
     char *mass_c = "0.001";
 
-    double x = 5.0;
-    char *x_c = "5.0";
+    double x = 15.0;
+    const char *x_c = "15.0";
 
     double y = 1.0;
     char *y_c = "1.0";
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     int step = 0;
     int output_step = 0;
 
-    double dt_output = 1.0;
+    double dt_output = 0.01;
     double next_output_time = 0.0;
 
     printf("\n初始化完成,開始 3D 模擬...\n");

@@ -30,12 +30,35 @@
  * W: Calculated kernel value (output)
  * dWdr: Calculated derivative of the kernel with respect to distance r (output)
  */
+// void cubic_spline_kernel_1d(double r, double h, double *W, double *dWdr, double *dWdh);
 // void cubic_spline_kernel(double r, double h, double *W, double *dWdr, double *dWdh);
 // void cubic_spline_kernel_3d(double r, double h, double *W, double *dWdr, double *dWdh);
 
 #ifndef M_PI
 #define M_PI 3.14159265358979323846
 #endif
+
+SPH_MATH_INLINE void cubic_spline_kernel_1d(double r, double h, double *W, double *dWdr, double *dWdh)
+{
+  double q = r / h;
+  double norm = 4.0 / (3.0 * h);
+  double norm_dW = norm / h;
+
+  if (q >= 0.0 && q <= 0.5) {
+    *W = norm * (1.0 - 6.0 * q * q + 6.0 * q * q * q);
+    *dWdr = norm_dW * (-12.0 * q + 18.0 * q * q);
+    *dWdh = (-1.0 / h) * (*W) - q * (*dWdr);
+  } else if (q > 0.5 && q <= 1.0) {
+    double diff = 1.0 - q;
+    *W = norm * 2.0 * diff * diff * diff;
+    *dWdr = norm_dW * (-6.0 * diff * diff);
+    *dWdh = (-1.0 / h) * (*W) - q * (*dWdr);
+  } else {
+    *W = 0.0;
+    *dWdr = 0.0;
+    *dWdh = 0.0;
+  }
+}
 
 SPH_MATH_INLINE void cubic_spline_kernel(double r, double h, double *W, double *dWdr, double *dWdh)
 {
