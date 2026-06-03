@@ -1,8 +1,4 @@
-#include "sph_system.h"
-#include <sys/stat.h>
-#include <errno.h>
-#include <string.h>
-#include <stdlib.h>
+#include "sph_all.h"
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");

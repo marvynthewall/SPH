@@ -37,7 +37,7 @@ LDFLAGS_GPU = -lm -L/usr/lib/x86_64-linux-gnu -lcudart
 # ----------------------------
 # Object files
 # ----------------------------
-SRCS_COMMON = sph_system kernel init io
+SRCS_COMMON = sph_system init io
 
 OBJS_CPU = $(foreach s,$(SRCS_COMMON),$(BUILD_CPU)/$(s).o) \
            $(BUILD_CPU)/density.o \
@@ -65,9 +65,11 @@ cpu: $(BIN_DIR)/sod_1d_cpu $(BIN_DIR)/sod_2d_cpu $(BIN_DIR)/sod_3d_cpu $(BIN_DIR
 omp: $(BIN_DIR)/sod_1d_omp $(BIN_DIR)/sod_2d_omp $(BIN_DIR)/sod_3d_omp $(BIN_DIR)/kh_2d_omp
 	@echo "[OpenMP Compilation Complete]"
 
-gpu: $(BIN_DIR)/sod_1d_gpu $(BIN_DIR)/sod_2d_gpu $(BIN_DIR)/sod_3d_gpu $(BIN_DIR)/kh_2d_gpu
-	@echo "[CUDA GPU Compilation Complete]"
+# gpu: $(BIN_DIR)/sod_1d_gpu $(BIN_DIR)/sod_2d_gpu $(BIN_DIR)/sod_3d_gpu $(BIN_DIR)/kh_2d_gpu
+# 	@echo "[CUDA GPU Compilation Complete]"
 
+gpu: $(BIN_DIR)/sod_2d_gpu
+	@echo "[CUDA GPU Compilation Complete]"
 # ----------------------------
 # Create directories
 # ----------------------------
@@ -208,9 +210,6 @@ $(BUILD_CPU)/integrator.o: src/integrator.c include/integrator.h | $(BUILD_CPU)
 $(BUILD_OMP)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
-$(BUILD_OMP)/kernel.o: src/kernel.c include/kernel.h | $(BUILD_OMP)
-	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
-
 $(BUILD_OMP)/init.o: src/init.c include/init.h | $(BUILD_OMP)
 	$(CC_OMP) $(CFLAGS_OMP) -c $< -o $@
 
@@ -230,16 +229,13 @@ $(BUILD_OMP)/integrator.o: src/integrator.c include/integrator.h | $(BUILD_OMP)
 # Compile common sources GPU
 # ----------------------------
 $(BUILD_GPU)/sph_system.o: src/sph_system.c include/sph_system.h | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
-
-$(BUILD_GPU)/kernel.o: src/kernel.c include/kernel.h | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_GPU)/init.o: src/init.c include/init.h | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_GPU)/io.o: src/io.c include/io.h | $(BUILD_GPU)
-	$(NVCC) $(NVCCFLAGS) -c $< -o $@
+	$(NVCC) $(NVCCFLAGS) -x cu -c $< -o $@
 
 $(BUILD_GPU)/density.o: src/density.cu include/density.cuh | $(BUILD_GPU)
 	$(NVCC) $(NVCCFLAGS) -c $< -o $@
@@ -345,6 +341,19 @@ $(BUILD_CPU)/test_kernel.o: tests/test_kernel.c | $(BUILD_CPU)
 
 $(BUILD_CPU)/test_integrator.o: tests/test_integrator.c | $(BUILD_CPU)
 	$(CC_CPU) $(CFLAGS_CPU) -c $< -o $@
+
+# ----------------------------
+#  Global Header Dependencies
+# ----------------------------
+ALL_OBJS = $(OBJS_CPU) $(OBJS_OMP) $(OBJS_GPU) \
+           $(BUILD_CPU)/sod_2d.o $(BUILD_OMP)/sod_2d.o $(BUILD_GPU)/sod_2d.o \
+           $(BUILD_CPU)/sod_3d.o $(BUILD_OMP)/sod_3d.o $(BUILD_GPU)/sod_3d.o \
+           $(BUILD_CPU)/kh_2d.o $(BUILD_OMP)/kh_2d.o $(BUILD_GPU)/kh_2d.o \
+           $(BUILD_CPU)/test_density.o $(BUILD_CPU)/test_force.o \
+           $(BUILD_CPU)/test_init.o $(BUILD_CPU)/test_kernel.o $(BUILD_CPU)/test_integrator.o
+
+$(ALL_OBJS): include/sph_all.h include/sph_system.h
+
 
 # ----------------------------
 # Clean

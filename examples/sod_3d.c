@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -143,7 +143,7 @@ int main(int argc, char *argv[])
     int step = 0;
     int output_step = 0;
 
-    double dt_output = 1.0;
+    double dt_output = 0.01;
     double next_output_time = 0.0;
 
     printf("\n初始化完成,開始 3D 模擬...\n");

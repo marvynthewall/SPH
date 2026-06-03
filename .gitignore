@@ -16,3 +16,5 @@ tests/test_integrator
 .vscode
 *old*
 __pycache__/
+*.o
+grid_solver/bin/*

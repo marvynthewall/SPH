@@ -26,7 +26,9 @@ int main(int argc, char *argv[]) {
   const char *x_c = "15.0";
   double t_end = 5.0;
   const char *t_c = "5.0";
+#ifdef _OPENMP
   int num_threads = 0;
+#endif
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-m") == 0 && i + 1 < argc) {
@@ -46,10 +48,13 @@ int main(int argc, char *argv[]) {
       output_folder[sizeof(output_folder) - 1] = '\0';
       custom_folder_set = 1;
       i++;
-    } else if (strcmp(argv[i], "-th") == 0 && i + 1 < argc) {
+    } 
+#ifdef _OPENMP
+    else if (strcmp(argv[i], "-th") == 0 && i + 1 < argc) {
       num_threads = atoi(argv[i + 1]);
       i++;
     }
+#endif
   }
 
   if (custom_folder_set == 0) {
@@ -154,7 +159,7 @@ int main(int argc, char *argv[]) {
         &sph, compute_timestep_signal_velocity, compute_force_1d_xreflective);
     t += dt;
     step++;
-    double step_time;
+    double step_time = 0.0;
 #ifdef _OPENMP
     new_step_time = omp_get_wtime();
     step_time = new_step_time - prev_step_time;
@@ -165,6 +170,7 @@ int main(int argc, char *argv[]) {
                 (run_t_new.tv_usec - run_t_old.tv_usec) / 1000000.0;
     run_t_old = run_t_new;
 #endif
+    printf("sod t:%.10f, dt: %.10f, step simulation time: %f\n", t, dt, step_time);
   }
 
   double elapsed_time = 0.0;
