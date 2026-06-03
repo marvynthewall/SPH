@@ -151,6 +151,7 @@ int main(int argc, char *argv[]) {
   double init_time = 0.0;
 #ifdef _OPENMP
   init_time = omp_get_wtime() - start_time_omp;
+  prev_step_time = init_time;
 #else
   gettimeofday(&run_t_init, NULL);
   init_time = (run_t_init.tv_sec - run_t_start.tv_sec) + (run_t_init.tv_usec - run_t_start.tv_usec) / 1000000.0;
