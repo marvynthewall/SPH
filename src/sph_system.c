@@ -32,13 +32,21 @@ void allocate_sph_system(SPHSystem *sph, int N)
     sph->next = (int *)malloc(N * sizeof(int));
 
 
-    sph->particles = (Particle *)malloc(N * sizeof(Particle));
-
+    size_t bytes = N * sizeof(Particle);
+    sph->particles = (Particle *)malloc(bytes);
     if (sph->particles == NULL) {
         fprintf(stderr, "Error: memory allocation failed.\n");
         sph->N = 0;
         exit(EXIT_FAILURE);
     }
+
+#ifdef USE_GPU
+    cudaError_t err = cudaMalloc((void**)&sph->d_particles, bytes);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Error: GPU memory allocation failed: %s\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+#endif
 
     // initialize particles
     for (int i = 0; i < N; i++) {
@@ -68,15 +76,34 @@ void allocate_sph_system(SPHSystem *sph, int N)
     }
 }
 
+#ifdef USE_GPU
+void copy_particles_H2D(SPHSystem *sph) {
+    size_t bytes = sph->N * sizeof(Particle);
+    cudaMemcpy(sph->d_particles, sph->particles, bytes, cudaMemcpyHostToDevice);
+}
+
+void copy_particles_D2H(SPHSystem *sph) {
+    size_t bytes = sph->N * sizeof(Particle);
+    cudaMemcpy(sph->particles, sph->d_particles, bytes, cudaMemcpyDeviceToHost);
+}
+#endif
+
 void free_sph_system(SPHSystem *sph)
 {
     if (sph == NULL) {
         return;
     }
 
-    free(sph->particles);
-    sph->particles = NULL;
-
+    if (sph->particles){
+        free(sph->particles);
+        sph->particles = NULL;
+    }
+#ifdef USE_GPU
+    if (sph->d_particles) { 
+        cudaFree(sph->d_particles); 
+        sph->d_particles = NULL; 
+    }
+#endif
     sph->N = 0;
 
     sph->time  = 0.0;

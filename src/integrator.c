@@ -4,6 +4,10 @@
 #include <omp.h>
 #endif
 
+// because of the linked list, it cannot be GPU accelerated
+// look up the "sort-based spatial partitioning"
+// it doesn't use linked list but a cell hash method
+
 void build_cell_list(SPHSystem *sph) {
     // 1. find the max h, for the safe grid size
     double max_h = 0.0;
@@ -27,20 +31,29 @@ void build_cell_list(SPHSystem *sph) {
     // max_h = max(max_h, safe_min_h);
     
     // 2. cell size
-    sph->cell_size = max_h; 
+    int optimal_ny = (int)floor(sph->box_size_y / max_h);
+    if (optimal_ny < 1) optimal_ny = 1; // 防呆機制
+
+    double safe_cell_size = sph->box_size_y / (double)optimal_ny;
+    sph->cell_size = safe_cell_size;
     
     // 3. number of cells
     sph->num_cells_x = (int)ceil(sph->box_size_x / sph->cell_size);
-    sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
+    sph->num_cells_y = optimal_ny;
+    // sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
     int new_total_cells = sph->num_cells_x * sph->num_cells_y;
     
     // 4. reallocate the length of the head array
     if (new_total_cells != sph->total_cells) {
         if (sph->head) free(sph->head);
         sph->head = (int *)malloc(new_total_cells * sizeof(int));
+#ifdef __CUDACC__
+        if (sph->d_head) cudaFree(sph->d_head);
+        cudaMalloc((void**)&sph->d_head, new_total_cells * sizeof(int));
+#endif
         sph->total_cells = new_total_cells;
     }
-    
+
     // 5. initialize the head
     #ifdef _OPENMP
     #pragma omp parallel for
@@ -546,9 +559,18 @@ double step_leapfrog_kdk_xreflective_yperiodic(
 #else
   gettimeofday(&t2, NULL);
 #endif
+
+
   // Update hydrodynamic quantities at new position
+#ifdef __CUDACC__
+  update_adaptive_h(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic_celllist);
+#else
   // update_adaptive_h(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic);
   update_adaptive_h(sph, 20, 1e-4, 2.3, compute_density_xreflective_yperiodic_celllist);
+#endif
+
+
+
 #ifdef _OPENMP
   double t3 = omp_get_wtime();
 #else

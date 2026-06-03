@@ -254,6 +254,7 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
                    double target_mass) {
   double gamma = 1.4;
 
+  /*
   // Macroscopic physical quantities
   double rho_L = 1.0, P_L = 1.0;
   double rho_R = 0.125, P_R = 0.1;
@@ -277,11 +278,53 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
   int N_L = nx_L * ny_L;
   int N_R = nx_R * ny_R;
   int N = N_L + N_R;
+  */
+
+  // Macroscopic physical quantities
+  double rho_L = 1.0, P_L = 1.0;
+  double rho_R = 0.125, P_R = 0.1;
+  double eta = 1.3;
+
+  double x_mid = x_max / 2.0;
+
+  // 1. 理論上的完美正方間距 (Ideal spacing)
+  double ideal_dx_L = sqrt(target_mass / rho_L);
+  double ideal_dx_R = sqrt(target_mass / rho_R);
+
+  // 2. 計算各區域應該放「幾個」粒子
+  // (使用 round 四捨五入找最接近的整數，確保解析度最貼近 target_mass)
+  int nx_L = (int)round(x_mid / ideal_dx_L);
+  int ny_L = (int)round(y_max / ideal_dx_L);
+
+  int nx_R = (int)round((x_max - x_mid) / ideal_dx_R);
+  int ny_R = (int)round(y_max / ideal_dx_R);
+
+  // 3. 根據整數粒子數量，反推「真正完美貼合邊界」的 dx 與 dy
+  double dx_L = x_mid / (double)nx_L;
+  double dy_L = y_max / (double)ny_L;
+
+  double dx_R = (x_max - x_mid) / (double)nx_R;
+  double dy_R = y_max / (double)ny_R;
+
+  // 4. 重新計算粒子真實質量 (Mass = Density * Volume)
+  // 這樣做可以保證即使 dx != dy，巨觀密度 rho 依然完美等於 1.0 和 0.125
+  double actual_mass_L = rho_L * dx_L * dy_L;
+  double actual_mass_R = rho_R * dx_R * dy_R;
+
+  // 5. 總粒子數
+  int N_L = nx_L * ny_L;
+  int N_R = nx_R * ny_R;
+  int N = N_L + N_R;
 
   printf("Number of Particles: %d\n", N);
 
   // Allocate memory for the SPH system
   allocate_sph_system(sph, N);
+
+#ifdef __CUDACC__
+  copy_particles_H2D(&sph);
+  printf("host 2 devise\n");
+#endif
 
   sph->gamma = gamma;
   sph->box_size_x = x_max;
@@ -293,51 +336,52 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
 
   int p_idx = 0; // Particle array index
 
-  // 4. Distribute the high-pressure fluid in the left region
-  // (Center the grid by adding an offset, leaving half a dx as the distance to
-  // the walls)
-  double offset_x_L = (x_mid - (nx_L * dx_L)) / 2.0 + (dx_L / 2.0);
-  double offset_y_L = (y_max - (ny_L * dx_L)) / 2.0 + (dx_L / 2.0);
+  // 假設你已經用 x_mid / nx_L 算出了完美貼合的 dx_L, dy_L, dx_R, dy_R
+    // (參考上一則對話的步驟 3)
 
-  for (int i = 0; i < nx_L; i++) {
-    for (int j = 0; j < ny_L; j++) {
-      Particle *p = &sph->particles[p_idx++];
-      p->id = p_idx;
-      p->x = offset_x_L + i * dx_L;
-      p->y = offset_y_L + j * dx_L;
-      p->mass = target_mass;
-      p->rho = rho_L;
-      p->pressure = P_L;
-      p->u = P_L / ((gamma - 1.0) * rho_L);
-      p->h = h_L;
-      p->cs = sqrt(gamma * P_L / rho_L);
-      p->vx = 0.0;
-      p->vy = 0.0;
+    // 4. Distribute the high-pressure fluid in the left region
+    for (int i = 0; i < nx_L; i++) {
+      for (int j = 0; j < ny_L; j++) {
+        Particle *p = &sph->particles[p_idx++];
+        p->id = p_idx;
+
+        // 【修正位置】直接用 0.5 * dx，確保緊貼牆壁，不留任何縫隙
+        p->x = (i + 0.5) * dx_L;
+        p->y = (j + 0.5) * dy_L;
+
+        // 【修正質量】
+        p->mass = actual_mass_L;
+        p->rho = rho_L;
+        p->pressure = P_L;
+        p->u = P_L / ((gamma - 1.0) * rho_L);
+        p->h = h_L;
+        p->cs = sqrt(gamma * P_L / rho_L);
+        p->vx = 0.0;
+        p->vy = 0.0;
+      }
     }
-  }
 
-  // 5. Distribute the low-pressure fluid in the right region
-  // (X coordinates start from x_mid)
-  double offset_x_R =
-      x_mid + ((x_max - x_mid - (nx_R * dx_R)) / 2.0) + (dx_R / 2.0);
-  double offset_y_R = (y_max - (ny_R * dx_R)) / 2.0 + (dx_R / 2.0);
+    // 5. Distribute the low-pressure fluid in the right region
+    for (int i = 0; i < nx_R; i++) {
+      for (int j = 0; j < ny_R; j++) {
+        Particle *p = &sph->particles[p_idx++];
+        p->id = p_idx;
 
-  for (int i = 0; i < nx_R; i++) {
-    for (int j = 0; j < ny_R; j++) {
-      Particle *p = &sph->particles[p_idx++];
-      p->id = p_idx;
-      p->x = offset_x_R + i * dx_R;
-      p->y = offset_y_R + j * dx_R;
-      p->mass = target_mass;
-      p->rho = rho_R;
-      p->pressure = P_R;
-      p->u = P_R / ((gamma - 1.0) * rho_R);
-      p->h = h_R;
-      p->cs = sqrt(gamma * P_R / rho_R);
-      p->vx = 0.0;
-      p->vy = 0.0;
+        // 【修正位置】X 座標從 x_mid 開始，依然緊貼交界面與右牆
+        p->x = x_mid + (i + 0.5) * dx_R;
+        p->y = (j + 0.5) * dy_R;
+
+        // 【修正質量 Typo】這裡是右半邊！
+        p->mass = actual_mass_R;
+        p->rho = rho_R;
+        p->pressure = P_R;
+        p->u = P_R / ((gamma - 1.0) * rho_R);
+        p->h = h_R;
+        p->cs = sqrt(gamma * P_R / rho_R);
+        p->vx = 0.0;
+        p->vy = 0.0;
+      }
     }
-  }
 }
 
 

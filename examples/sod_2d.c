@@ -2,6 +2,9 @@
 #ifdef _OPENMP
 #include <omp.h>
 #endif
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#endif
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
@@ -55,7 +58,14 @@ int main(int argc, char *argv[]) {
   }
   printf("Output will be saved to: %s\n", output_folder);
 
-#ifdef _OPENMP
+#ifdef __CUDACC__
+  printf("Execution Mode: CUDA GPU Acceleration Enabled\n"); 
+  int deviceId;
+  cudaGetDevice(&deviceId);
+  struct cudaDeviceProp props;
+  cudaGetDeviceProperties(&props, deviceId);
+  printf("GPU Device: %s\n", props.name);
+#elif defined(_OPENMP)
   if (num_threads > 0) {
       // 如果使用者有指定，就強制設定 OpenMP 使用該數量
       omp_set_num_threads(num_threads);
@@ -68,7 +78,6 @@ int main(int argc, char *argv[]) {
   printf("Number of Threads: %d\n", actual_threads);
 #else
   if (num_threads > 0) {
-      // 防呆機制：使用者下了 -th 但編譯時沒開 OpenMP
       printf("Warning: '-th %d' ignored because OpenMP is not enabled during compilation.\n", num_threads);
   }
   printf("Execution Mode: Single Core (OpenMP disabled)\n");
@@ -164,6 +173,9 @@ int main(int argc, char *argv[]) {
       printf("output_time: %.4f\n", t);
       char filename[256];
       snprintf(filename, sizeof(filename), "%s/output_%04d.csv", output_folder, output_step);
+#ifdef __CUDACC__
+      copy_particles_D2H(&sph);
+#endif
       write_csv(&sph, filename);
       printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
              filename);
@@ -216,6 +228,7 @@ int main(int argc, char *argv[]) {
   printf("Simulation Time: %.3f seconds\n", elapsed_time - init_time);
   printf("Total Outputfile numbers: %d\n", output_step);
   printf("Mass of particles: %f\n", mass);
+  printf("Output saved to: %s\n", output_folder);
   printf("====================================\n");
 
   // 3. 迴圈結束後，安全關閉檔案

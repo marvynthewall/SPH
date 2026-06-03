@@ -12,6 +12,10 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#ifdef __CUDACC__
+#include <cuda_runtime.h>
+#endif
+
 // Physical constants
 // can be put into constants.h file
 // for most case in the Astrophysics, or shockwave in the ISM (Interstellar Medium)
@@ -63,6 +67,13 @@ typedef struct {
 
     Particle *particles;
 
+#ifdef __CUDACC__
+    // This is the copy in GPU
+    // Actually all the computation run this
+    // So the CPU version is actually the copy of this GPU
+    Particle *d_particles;
+#endif
+
     // time control
     double time;
     double dt;
@@ -96,6 +107,10 @@ typedef struct {
 void allocate_sph_system(SPHSystem *sph, int N);
 void free_sph_system(SPHSystem *sph);
 
+#ifdef __CUDACC__
+void copy_particles_H2D(SPHSystem *sph);
+void copy_particles_D2H(SPHSystem *sph);
+#endif
 
 /* module headers */
 #include "density.h"
