@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 
 int check_particle_number(const SPHSystem *sph, int nx, int ny,
                           const char *func_name) {
@@ -285,29 +285,35 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
   double rho_R = 0.125, P_R = 0.1;
   double eta = 1.3;
 
-  double x_mid = x_max / 2.0;
+  double target_x_mid = x_max / 2.0;
 
   // 1. 理論上的完美正方間距 (Ideal spacing)
   double ideal_dx_L = sqrt(target_mass / rho_L);
   double ideal_dx_R = sqrt(target_mass / rho_R);
 
-  // 2. 計算各區域應該放「幾個」粒子
-  // (使用 round 四捨五入找最接近的整數，確保解析度最貼近 target_mass)
-  int nx_L = (int)round(x_mid / ideal_dx_L);
+  // 2. 以 Y 軸為基準，確保 Y-Periodic 完美無縫
   int ny_L = (int)round(y_max / ideal_dx_L);
-
-  int nx_R = (int)round((x_max - x_mid) / ideal_dx_R);
   int ny_R = (int)round(y_max / ideal_dx_R);
 
-  // 3. 根據整數粒子數量，反推「真正完美貼合邊界」的 dx 與 dy
-  double dx_L = x_mid / (double)nx_L;
   double dy_L = y_max / (double)ny_L;
-
-  double dx_R = (x_max - x_mid) / (double)nx_R;
   double dy_R = y_max / (double)ny_R;
 
-  // 4. 重新計算粒子真實質量 (Mass = Density * Volume)
-  // 這樣做可以保證即使 dx != dy，巨觀密度 rho 依然完美等於 1.0 和 0.125
+  // ==========================================
+  // 3. 強制 X 間距等於 Y 間距，打造「絕對正方形」網格
+  // ==========================================
+  double dx_L = dy_L;
+  double dx_R = dy_R;
+
+  // 4. 計算 X 方向需要的粒子數
+  int nx_L = (int)round(target_x_mid / dx_L);
+  int nx_R = (int)round((x_max - target_x_mid) / dx_R);
+
+  // ==========================================
+  // 5. 動態修正物理邊界！讓空間去遷就完美的網格
+  // ==========================================
+  double actual_x_mid = nx_L * dx_L;
+  double actual_x_max = actual_x_mid + nx_R * dx_R;
+
   double actual_mass_L = rho_L * dx_L * dy_L;
   double actual_mass_R = rho_R * dx_R * dy_R;
 
@@ -322,12 +328,13 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
   allocate_sph_system(sph, N);
 
 #ifdef __CUDACC__
-  copy_particles_H2D(&sph);
+  copy_particles_H2D(sph);
   printf("host 2 devise\n");
 #endif
 
   sph->gamma = gamma;
-  sph->box_size_x = x_max;
+  // the refined x max
+  sph->box_size_x = actual_x_max;
   sph->box_size_y = y_max;
 
   // Pre-calculate smoothing lengths for both regions
@@ -367,8 +374,8 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
         Particle *p = &sph->particles[p_idx++];
         p->id = p_idx;
 
-        // 【修正位置】X 座標從 x_mid 開始，依然緊貼交界面與右牆
-        p->x = x_mid + (i + 0.5) * dx_R;
+        // 【修正位置】X 座標從 actual_x_mid 開始，依然緊貼交界面與右牆
+        p->x = actual_x_mid + (i + 0.5) * dx_R;
         p->y = (j + 0.5) * dy_R;
 
         // 【修正質量 Typo】這裡是右半邊！

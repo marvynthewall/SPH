@@ -96,10 +96,15 @@ typedef struct {
     double cell_size;     // size (>= max_h)
     int num_cells_x;      // X cells
     int num_cells_y;      // Y cells
+    int num_cells_z;      // Z cells
     int total_cells;      // = num_cells_x * num_cells_y
-    
+
     int *head;            // array size = total_cells
     int *next;            // array size = N
+#ifdef __CUDACC__
+    int *d_head;
+    int *d_next;
+#endif
 } SPHSystem;
 
 
@@ -111,14 +116,5 @@ void free_sph_system(SPHSystem *sph);
 void copy_particles_H2D(SPHSystem *sph);
 void copy_particles_D2H(SPHSystem *sph);
 #endif
-
-/* module headers */
-#include "density.h"
-#include "force.h"
-#include "init.h"
-#include "integrator.h"
-#include "io.h"
-#include "kernel.h"
-#include "constants.h"
 
 #endif

@@ -1,4 +1,4 @@
-#include "density.h"
+#include "sph_all.h"
 
 void update_adaptive_h(SPHSystem *sph, int max_iter, double tol, double eta,
                        void (*compute_density_fn)(SPHSystem *)) {

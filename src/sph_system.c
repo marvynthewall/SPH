@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 
 void allocate_sph_system(SPHSystem *sph, int N)
 {
@@ -40,12 +40,10 @@ void allocate_sph_system(SPHSystem *sph, int N)
         exit(EXIT_FAILURE);
     }
 
-#ifdef USE_GPU
-    cudaError_t err = cudaMalloc((void**)&sph->d_particles, bytes);
-    if (err != cudaSuccess) {
-        fprintf(stderr, "Error: GPU memory allocation failed: %s\n", cudaGetErrorString(err));
-        exit(EXIT_FAILURE);
-    }
+#ifdef __CUDACC__
+    cudaMalloc((void**)&sph->d_particles, N * sizeof(Particle));
+    cudaMalloc((void**)&sph->d_next, N * sizeof(int));
+    sph->d_head = NULL; // head 會在 cell list 階段動態分配，先設為 NULL
 #endif
 
     // initialize particles
@@ -76,7 +74,7 @@ void allocate_sph_system(SPHSystem *sph, int N)
     }
 }
 
-#ifdef USE_GPU
+#ifdef __CUDACC__
 void copy_particles_H2D(SPHSystem *sph) {
     size_t bytes = sph->N * sizeof(Particle);
     cudaMemcpy(sph->d_particles, sph->particles, bytes, cudaMemcpyHostToDevice);
@@ -98,10 +96,12 @@ void free_sph_system(SPHSystem *sph)
         free(sph->particles);
         sph->particles = NULL;
     }
-#ifdef USE_GPU
+#ifdef __CUDACC__
     if (sph->d_particles) { 
         cudaFree(sph->d_particles); 
         sph->d_particles = NULL; 
+        cudaFree(sph->d_next);
+        sph->d_next = NULL;
     }
 #endif
     sph->N = 0;
@@ -118,4 +118,87 @@ void free_sph_system(SPHSystem *sph)
     sph->head = NULL;
     free(sph->next); 
     sph->next = NULL;
+}
+
+
+// because of the linked list, it cannot be GPU accelerated
+// look up the "sort-based spatial partitioning"
+// it doesn't use linked list but a cell hash method
+void build_cell_list(SPHSystem *sph) {
+    // 1. find the max h, for the safe grid size
+    double max_h = 0.0;
+#ifdef _OPENMP
+#pragma omp parallel for reduction(max:max_h)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        if (sph->particles[i].h > max_h) {
+            max_h = sph->particles[i].h;
+        }
+    }
+
+    // prevent too many cells
+    if (max_h < 1e-4) max_h = 1e-4;
+    // prevent too many cells causing Integer Overflow and OOM!
+    // double min_cell_x = sph->box_size_x / 2000.0; // 確保 X 軸最多切 2000 格
+    // double min_cell_y = sph->box_size_y / 2000.0;
+    // double safe_min_h = fmax(min_cell_x, min_cell_y);
+    // safe_min_h = fmax(safe_min_h, 1e-4); // 保留原本的絕對底線
+
+    // max_h = max(max_h, safe_min_h);
+
+    // 2. cell size
+    int optimal_ny = (int)floor(sph->box_size_y / max_h);
+    if (optimal_ny < 1) optimal_ny = 1; // 防呆機制
+
+    double safe_cell_size = sph->box_size_y / (double)optimal_ny;
+    sph->cell_size = safe_cell_size;
+
+    // 3. number of cells
+    sph->num_cells_x = (int)ceil(sph->box_size_x / sph->cell_size);
+    sph->num_cells_y = optimal_ny;
+    // sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
+    int new_total_cells = sph->num_cells_x * sph->num_cells_y;
+
+    // 4. reallocate the length of the head array
+    if (new_total_cells != sph->total_cells) {
+        if (sph->head) free(sph->head);
+        sph->head = (int *)malloc(new_total_cells * sizeof(int));
+#ifdef __CUDACC__
+        if (sph->d_head) cudaFree(sph->d_head);
+        cudaMalloc((void**)&sph->d_head, new_total_cells * sizeof(int));
+#endif
+        sph->total_cells = new_total_cells;
+    }
+
+    // 5. initialize the head
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
+    for (int c = 0; c < sph->total_cells; c++) {
+        sph->head[c] = -1;
+    }
+
+    // 6. Create the Linked List
+    // Do not parallelization!! Race Condition！
+    // O(N), fast!
+    for (int i = 0; i < sph->N; i++) {
+        Particle *p = &sph->particles[i];
+
+        // make sure it is inside
+        double x = fmax(0.0, fmin(p->x, sph->box_size_x - 1e-9));
+        double y = fmax(0.0, fmin(p->y, sph->box_size_y - 1e-9));
+
+        // grid coordinate (cx, cy)
+        int cx = (int)(x / sph->cell_size);
+        int cy = (int)(y / sph->cell_size);
+
+        // 1D array index
+        int cell_index = cx + cy * sph->num_cells_x;
+
+        // --- core Linked List insertion
+        // 1. link the original head with i
+        sph->next[i] = sph->head[cell_index]; 
+        // 2. the head is now i
+        sph->head[cell_index] = i; 
+    }
 }

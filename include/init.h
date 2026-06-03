@@ -1,5 +1,5 @@
-#ifndef INIT_H
-#define INIT_H
+#pragma once
+#include "sph_system.h"
 
 int check_particle_number(const SPHSystem *sph,int nx, int ny, const char *func_name);
 void init_uniform_box(SPHSystem *sph, int nx, int ny);
@@ -14,5 +14,3 @@ void init_sod_2d_3(SPHSystem *sph, double x, double y, double mass);
 void init_sod_3d_3(SPHSystem *sph, double x, double y, double z, double mass);
 
 void init_KH(SPHSystem *sph, int nx, int ny);
-
-#endif
