@@ -109,7 +109,7 @@ int main(int argc, char *argv[]) {
   */
   // timing
 #ifdef _OPENMP
-  double start_time_omp=0.0, new_step_time=0.0, pre_step_time = 0.0;
+  double start_time_omp=0.0, new_step_time=0.0, prev_step_time = 0.0;
   start_time_omp = omp_get_wtime();
   printf("Starting simulation with OpenMP acceleration...\n");
 #else
@@ -154,7 +154,7 @@ int main(int argc, char *argv[]) {
 #else
   gettimeofday(&run_t_init, NULL);
   init_time = (run_t_init.tv_sec - run_t_start.tv_sec) + (run_t_init.tv_usec - run_t_start.tv_usec) / 1000000.0;
-  run_t_old = init_time;
+  run_t_old = run_t_init;
 #endif
   printf("Initialized in: %.3f seconds, start simulation\n", init_time);
 
