@@ -16,6 +16,7 @@ void allocate_sph_system(SPHSystem *sph, int N)
 
     sph->N = N;
     sph->gamma = GAMMA;
+    sph->dim = 2;
 
     sph->time  = 0.0;
     sph->dt    = 0.0;
