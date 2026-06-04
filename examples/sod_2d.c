@@ -19,8 +19,9 @@ int main(int argc, char *argv[]) {
     const char *mass_c = "0.001";
     double x = 15.0;
     const char *x_c = "15.0";
-    double t_end = 5.0;
-    const char *t_c = "5.0";
+    double t_end = 4.0;
+    const char *t_c = "4.0";
+    const char *output_format = "bin";
 #ifndef __CUDACC__
     int num_threads = 0;
 #endif
@@ -39,6 +40,19 @@ int main(int argc, char *argv[]) {
             t_c = argv[i+1];
             t_end = atof(argv[i + 1]); 
             i++;                      
+        }
+        else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
+            // 檢查使用者輸入的是不是 csv 或 bin
+            if (strcmp(argv[i + 1], "csv") == 0) {
+                output_format = "csv";
+            } else if (strcmp(argv[i + 1], "bin") == 0) {
+                output_format = "bin";
+            } else {
+                // 防呆機制：如果使用者亂打（例如 -f txt），給個警告並強制用預設值
+                fprintf(stderr, "Warning: unknown output format '%s'. Defaulting to 'bin'.\n", argv[i + 1]);
+                output_format = "bin";
+            }
+            i++; // 跳過下一個參數（也就是那個 "bin" 或 "csv"）
         }
         // 新增 -o 參數的判斷
         else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
@@ -193,12 +207,14 @@ int main(int argc, char *argv[]) {
         if (t >= next_output_time - 1e-9) {
             printf("output_time: %.4f\n", t);
             char filename[256];
-            snprintf(filename, sizeof(filename), "%s/output_%04d.csv", output_folder, output_step);
+            snprintf(filename, sizeof(filename), "%s/output_%04d.%s", output_folder, output_step, output_format);
 #ifdef __CUDACC__
             copy_particles_D2H(&sph);
 #endif
-            // write_csv(&sph, filename);
-            write_binary(&sph, filename);
+            if (strcmp(output_format, "bin") == 0)
+                write_binary(&sph, filename);
+            else if(strcmp(output_format, "csv") == 0)
+                write_csv(&sph, filename);
             printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
                     filename);
             // 2. 將當下的 frame 與精確時間 t 寫入 log
@@ -263,6 +279,10 @@ int main(int argc, char *argv[]) {
     printf("Number of particles: %d\n", sph.N);
     printf("Output saved to: %s\n", output_folder);
     printf("Total Outputfile numbers: %d\n", output_step);
+#ifdef _OPENMP
+    printf("Execution Mode: OpenMP Acceleration Enabled\n");
+    printf("Number of Threads: %d\n", actual_threads);
+#endif
     printf("====================================\n");
 
     // 3. 迴圈結束後，安全關閉檔案

@@ -329,7 +329,6 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
 
 #ifdef __CUDACC__
   copy_particles_H2D(sph);
-  printf("host 2 devise\n");
 #endif
 
   sph->gamma = gamma;

@@ -24,6 +24,25 @@ void write_csv(SPHSystem *sph, const char *filename) {
 
   fclose(fp);
 }
+void write_csv_2d(SPHSystem *sph, const char *filename) {
+  FILE *fp = fopen(filename, "w");
+
+  if (fp == NULL) {
+    fprintf(stderr, "Error: cannot open file %s\n", filename);
+    exit(EXIT_FAILURE);
+  }
+
+  fprintf(fp, "x,y,vx,rho,P\n");
+
+  for (int i = 0; i < sph->N; i++) {
+    fprintf(fp,
+            "%.4e,%.4e,%.4e,%.4e,%.4e",
+            sph->particles[i].x, sph->particles[i].y, sph->particles[i].vx,
+            sph->particles[i].rho, sph->particles[i].pressure);
+  }
+
+  fclose(fp);
+}
 
 void write_binary(SPHSystem *sph, const char *filename) {
     FILE *fp = fopen(filename, "wb");
@@ -36,7 +55,7 @@ void write_binary(SPHSystem *sph, const char *filename) {
     int N = sph->N;
     int ncols = 16;
 
-    double *data = malloc((size_t)N * ncols * sizeof(double));
+    double *data = (double *)malloc((size_t)N * ncols * sizeof(double));
 
     if (data == NULL) {
         fprintf(stderr, "Error: memory allocation failed in write_binary.\n");
@@ -63,6 +82,41 @@ void write_binary(SPHSystem *sph, const char *filename) {
         data[i * ncols + 13] = p->u;
         data[i * ncols + 14] = p->h;
         data[i * ncols + 15] = p->cs;
+    }
+
+    fwrite(&N, sizeof(int), 1, fp);
+    fwrite(&ncols, sizeof(int), 1, fp);
+    fwrite(data, sizeof(double), (size_t)N * ncols, fp);
+
+    free(data);
+    fclose(fp);
+}
+void write_binary_2d(SPHSystem *sph, const char *filename) {
+    FILE *fp = fopen(filename, "wb");
+
+    if (fp == NULL) {
+        fprintf(stderr, "Error: cannot open file %s\n", filename);
+        exit(EXIT_FAILURE);
+    }
+
+    int N = sph->N;
+    int ncols = 5;
+
+    double *data = (double *)malloc((size_t)N * ncols * sizeof(double));
+
+    if (data == NULL) {
+        fprintf(stderr, "Error: memory allocation failed in write_binary.\n");
+        fclose(fp);
+        exit(EXIT_FAILURE);
+    }
+
+    for (int i = 0; i < N; i++) {
+        Particle *p = &sph->particles[i];
+        data[i * ncols]  = p->x;
+        data[i * ncols + 1]  = p->y;
+        data[i * ncols + 2]  = p->vx;
+        data[i * ncols + 3] = p->rho;
+        data[i * ncols + 4] = p->pressure;
     }
 
     fwrite(&N, sizeof(int), 1, fp);

@@ -12,6 +12,9 @@
 #include <sys/time.h>
 #include <errno.h>
 
+#ifdef _OPENMP
+#include <omp.h>
+#endif
 #ifdef __CUDACC__
 #include <cuda_runtime.h>
 #endif
@@ -111,6 +114,8 @@ typedef struct {
 /* memory management */
 void allocate_sph_system(SPHSystem *sph, int N);
 void free_sph_system(SPHSystem *sph);
+void build_cell_list(SPHSystem *sph);
+void build_cell_list_3d(SPHSystem *sph);
 
 #ifdef __CUDACC__
 void copy_particles_H2D(SPHSystem *sph);

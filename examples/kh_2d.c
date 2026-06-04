@@ -40,9 +40,9 @@ int main(int argc, char *argv[]) {
   sph.epsilon = 0.01;
 
   // Initial hydrodynamic computation before taking the first step
-  compute_density_xperiodic_yperiodic(&sph);
+  compute_density_xperiodic_yperiodic_celllist(&sph);
   compute_pressure_soundspeed_factor(&sph);
-  compute_force_xperiodic_yperiodic(&sph);
+  compute_force_xperiodic_yperiodic_celllist(&sph);
 
   double t = 0.0;
   double t_end = 2.0;
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
 
     // integrate one step using fully periodic boundary conditions
     double dt = step_leapfrog_kdk_xperiodic_yperiodic(
-        &sph, compute_timestep_signal_velocity, compute_force_xperiodic_yperiodic);
+        &sph, compute_timestep_signal_velocity, compute_force_xperiodic_yperiodic_celllist);
     t += dt;
     step++;
   }

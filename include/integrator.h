@@ -1,8 +1,6 @@
 #pragma once
 #include "sph_system.h"
 
-void build_cell_list(SPHSystem *sph);
-void build_cell_list_3d(SPHSystem *sph);
 
 double compute_timestep(SPHSystem *sph);
 double compute_timestep_signal_velocity(SPHSystem *sph);
