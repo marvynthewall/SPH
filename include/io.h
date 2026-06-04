@@ -8,6 +8,8 @@
  */
 
 void write_csv(SPHSystem * sph ,const char * filename);
+void write_csv_2d(SPHSystem * sph ,const char * filename);
 void write_binary(SPHSystem *sph, const char *filename);
+void write_binary_2d(SPHSystem *sph, const char *filename);
 
 #endif

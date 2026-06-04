@@ -24,8 +24,8 @@ int main(int argc, char *argv[])
     double z = 1.0;
     char *z_c = "1.0";
 
-    double t_end = 20.0;
-    char *t_c = "5.0";
+    double t_end = 4.0;
+    char *t_c = "4.0";
 
     int num_threads = 0;
 
@@ -130,18 +130,16 @@ int main(int argc, char *argv[])
     init_sod_3d_3(&sph, x, y, z, mass);
 
     sph.gamma = 1.4;
-    sph.cfl = 0.1;
-    // sph.alpha = 0.5;
-    // sph.beta = 0.3;
-    sph.alpha = 0.0;
-    sph.beta = 0.0;
+    sph.cfl = 0.3;
+    sph.alpha = 1.0;
+    sph.beta = 2.0;
     sph.epsilon = 0.01;
 
-    // compute_density_xreflective_yzperiodic_3d(&sph);
-    compute_density_xreflective_yzperiodic_celllist_3d(&sph);
+    compute_density_xreflective_yzperiodic_3d(&sph);
+    // compute_density_xreflective_yzperiodic_celllist_3d(&sph);
     compute_pressure_soundspeed_factor(&sph);
-    // compute_force_xreflective_yperiodic_zperiodic_3d(&sph);
-    compute_force_xreflective_yzperiodic_celllist_3d(&sph);
+    compute_force_xreflective_yperiodic_zperiodic_3d(&sph);
+    // compute_force_xreflective_yzperiodic_celllist_3d(&sph);
 
     double t = 0.0;
     int step = 0;
@@ -195,14 +193,16 @@ int main(int argc, char *argv[])
             }
         }
 
+        
         double dt = step_leapfrog_kdk_xreflective_yzperiodic_3d(
             &sph,
             compute_timestep_signal_velocity_3d,
-            compute_force_xreflective_yzperiodic_celllist_3d);
-        // double dt = step_leapfrog_kdk_xreflective_yzperiodic_3d(
-        //     &sph,
-        //     compute_timestep_signal_velocity_3d,
-        //     compute_force_xreflective_yperiodic_zperiodic_3d);
+            compute_force_xreflective_yzperiodic_3d_celllist);
+            /*
+        double dt = step_leapfrog_kdk_xreflective_yzperiodic_3d(
+             &sph,
+             compute_timestep_signal_velocity_3d,
+             compute_force_xreflective_yperiodic_zperiodic_3d);*/
 
         t += dt;
 
@@ -227,6 +227,13 @@ int main(int argc, char *argv[])
     printf("Total Execution Time: %.3f seconds\n", elapsed_time);
     printf("Total Outputfile numbers: %d\n", output_step);
     printf("Mass of particles: %f\n", mass);
+    printf("Number of particles: %d\n", sph.N);
+    printf("Output saved to: %s\n", output_folder);
+    printf("Total Outputfile numbers: %d\n", output_step);
+#ifdef _OPENMP
+    printf("Execution Mode: OpenMP Acceleration Enabled\n");
+    printf("Number of Threads: %d\n", actual_threads);
+#endif
     printf("====================================\n");
 
     if (time_log != NULL) {

@@ -372,6 +372,81 @@ void compute_force_xreflective_yperiodic(SPHSystem *sph) {
     }
 }
 
+// Computing force, fully periodic in X and Y with cell list
+void compute_force_xperiodic_yperiodic_celllist(SPHSystem *sph) {
+    // 1. Initialize acceleration and dudt for all particles
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        sph->particles[i].ax = 0.0;
+        sph->particles[i].ay = 0.0;
+        sph->particles[i].dudt = 0.0;
+    }
+
+    // 2. Loop over all particles using cell list
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        Particle *p_i = &sph->particles[i];
+
+        // Get current cell coordinates
+        int cx_i = (int)(p_i->x / sph->cell_size);
+        int cy_i = (int)(p_i->y / sph->cell_size);
+
+        // Search 3x3 surrounding cells
+        for (int d_cy = -1; d_cy <= 1; d_cy++) {
+            for (int d_cx = -1; d_cx <= 1; d_cx++) {
+
+                int cx = cx_i + d_cx;
+                int cy = cy_i + d_cy;
+
+                // Apply X-periodic boundary for cell coordinates
+                if (cx < 0) cx += sph->num_cells_x;
+                else if (cx >= sph->num_cells_x) cx -= sph->num_cells_x;
+
+                // Apply Y-periodic boundary for cell coordinates
+                if (cy < 0) cy += sph->num_cells_y;
+                else if (cy >= sph->num_cells_y) cy -= sph->num_cells_y;
+
+                int cell_index = cx + cy * sph->num_cells_x;
+                int j = sph->head[cell_index];
+
+                // Traverse the linked list in the target cell
+                while (j != -1) {
+                    // Exclude self-interaction
+                    if (i != j) {
+                        Particle *p_j = &sph->particles[j];
+
+                        // Calculate original distance
+                        double dx = p_i->x - p_j->x;
+                        double dy = p_i->y - p_j->y;
+
+                        // Apply Minimum Image Convention for X
+                        if (dx > 0.5 * sph->box_size_x) dx -= sph->box_size_x;
+                        else if (dx < -0.5 * sph->box_size_x) dx += sph->box_size_x;
+
+                        // Apply Minimum Image Convention for Y
+                        if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+                        else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
+
+                        // Create ghost particle to adjust position for periodic distance
+                        // Velocity and other properties remain the same
+                        Particle ghost_j = *p_j;
+                        ghost_j.x = p_i->x - dx;
+                        ghost_j.y = p_i->y - dy;
+
+                        // Call the core physics calculation function
+                        compute_pairwise_physics(p_i, &ghost_j, sph);
+                    }
+                    
+                    j = sph->next[j];
+                } // end while (j != -1)
+            }
+        } // end for d_cx, d_cy
+    }
+}
 
 void compute_force_xperiodic_yperiodic(SPHSystem *sph) {
 #ifdef _OPENMP
@@ -713,14 +788,14 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
 
 
 
-void compute_force_xreflective_yzperiodic_celllist_3d(SPHSystem *sph)
+void compute_force_xreflective_yzperiodic_3d_celllist(SPHSystem *sph)
 {
     /*
      * Precondition:
      * build_cell_list_3d(sph) should already be called before this function.
      *
      * In your integrator, this is usually done inside:
-     * compute_density_xreflective_yzperiodic_celllist_3d(sph)
+     * compute_density_xreflective_yzperiodic_3d_celllist(sph)
      *
      * If you want this force function to be fully independent,
      * you can uncomment the following line:

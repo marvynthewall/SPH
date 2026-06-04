@@ -464,6 +464,73 @@ void compute_density_xperiodic_yperiodic(SPHSystem *sph) {
   }
 }
 
+void compute_density_xperiodic_yperiodic_celllist(SPHSystem *sph) {
+  // Rebuild the cell list
+  build_cell_list(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    double local_rho = 0.0;
+    double drhodh = 0.0;
+    Particle *p_i = &sph->particles[i];
+
+    // Current cell coordinates
+    int cx_i = (int)(p_i->x / sph->cell_size);
+    int cy_i = (int)(p_i->y / sph->cell_size);
+
+    // Search 3x3 surrounding cells
+    for (int d_cy = -1; d_cy <= 1; d_cy++) {
+      for (int d_cx = -1; d_cx <= 1; d_cx++) {
+        int cx = cx_i + d_cx;
+        int cy = cy_i + d_cy;
+
+        // Apply periodic boundary for cell coordinates in X and Y
+        cx += (cx < 0) ? sph->num_cells_x : 0;
+        cx -= (cx >= sph->num_cells_x) ? sph->num_cells_x : 0;
+        
+        cy += (cy < 0) ? sph->num_cells_y : 0;
+        cy -= (cy >= sph->num_cells_y) ? sph->num_cells_y : 0;
+
+        int cell_index = cx + cy * sph->num_cells_x;
+        int j = sph->head[cell_index];
+
+        while (j != -1) {
+          Particle *p_j = &sph->particles[j];
+
+          double dx = p_i->x - p_j->x;
+          double dy = p_i->y - p_j->y;
+
+          // Apply minimum image convention for periodic boundaries
+          if (dx > 0.5 * sph->box_size_x) dx -= sph->box_size_x;
+          else if (dx < -0.5 * sph->box_size_x) dx += sph->box_size_x;
+
+          if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+          else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
+
+          double r = sqrt(dx * dx + dy * dy);
+
+          // Calculate density contribution if within smoothing length
+          if (r <= p_i->h) {
+            double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+            cubic_spline_kernel(r, p_i->h, &W, &dWdr, &dWdh);
+            local_rho += p_j->mass * W;
+            drhodh += p_j->mass * dWdh;
+          }
+
+          // Move to the next particle in the current cell
+          j = sph->next[j];
+        }
+      }
+    }
+    
+    // Update particle density
+    p_i->rho = local_rho;
+    p_i->drho_dh = drhodh;
+  }
+}
+
 void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
@@ -569,7 +636,7 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
 }
 
 
-void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
+void compute_density_xreflective_yzperiodic_3d_celllist(SPHSystem *sph) {
 
     // Recalculate 3D cell list
     build_cell_list_3d(sph);
