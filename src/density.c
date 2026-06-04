@@ -568,6 +568,183 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
   }
 }
 
+<<<<<<< HEAD
+
+void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
+
+    // Recalculate 3D cell list
+    build_cell_list_3d(sph);
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+
+        double local_rho = 0.0;
+        double drhodh = 0.0;
+
+        Particle *p_i = &sph->particles[i];
+
+        int cx_i = (int)(p_i->x / sph->cell_size);
+        int cy_i = (int)(p_i->y / sph->cell_size);
+        int cz_i = (int)(p_i->z / sph->cell_size);
+
+        if (cx_i < 0) cx_i = 0;
+        if (cx_i >= sph->num_cells_x) cx_i = sph->num_cells_x - 1;
+
+        if (cy_i < 0) cy_i = 0;
+        if (cy_i >= sph->num_cells_y) cy_i = sph->num_cells_y - 1;
+
+        if (cz_i < 0) cz_i = 0;
+        if (cz_i >= sph->num_cells_z) cz_i = sph->num_cells_z - 1;
+
+        // Search neighboring 27 cells
+        for (int d_cz = -1; d_cz <= 1; d_cz++) {
+            for (int d_cy = -1; d_cy <= 1; d_cy++) {
+                for (int d_cx = -1; d_cx <= 1; d_cx++) {
+
+                    int cx = cx_i + d_cx;
+                    int cy = cy_i + d_cy;
+                    int cz = cz_i + d_cz;
+
+                    // Y-periodic cell wrapping
+                    if (cy < 0) {
+                        cy += sph->num_cells_y;
+                    } else if (cy >= sph->num_cells_y) {
+                        cy -= sph->num_cells_y;
+                    }
+
+                    // Z-periodic cell wrapping
+                    if (cz < 0) {
+                        cz += sph->num_cells_z;
+                    } else if (cz >= sph->num_cells_z) {
+                        cz -= sph->num_cells_z;
+                    }
+
+                    // X-reflective: no real cell outside the wall
+                    if (cx < 0 || cx >= sph->num_cells_x) {
+                        continue;
+                    }
+
+                    int cell_index =
+                        cx
+                        + cy * sph->num_cells_x
+                        + cz * sph->num_cells_x * sph->num_cells_y;
+
+                    int j = sph->head[cell_index];
+
+                    while (j != -1) {
+
+                        Particle *p_j = &sph->particles[j];
+
+                        double dy = p_i->y - p_j->y;
+                        double dz = p_i->z - p_j->z;
+
+                        // Y minimum image
+                        if (dy > 0.5 * sph->box_size_y) {
+                            dy -= sph->box_size_y;
+                        } else if (dy < -0.5 * sph->box_size_y) {
+                            dy += sph->box_size_y;
+                        }
+
+                        // Z minimum image
+                        if (dz > 0.5 * sph->box_size_z) {
+                            dz -= sph->box_size_z;
+                        } else if (dz < -0.5 * sph->box_size_z) {
+                            dz += sph->box_size_z;
+                        }
+
+                        // ==================================================
+                        // 1. Real particle contribution, including self
+                        // ==================================================
+                        double dx = p_i->x - p_j->x;
+                        double r = sqrt(dx * dx + dy * dy + dz * dz);
+
+                        if (r <= p_i->h) {
+                            double W = 0.0;
+                            double dWdr = 0.0;
+                            double dWdh = 0.0;
+
+                            cubic_spline_kernel_3d(
+                                r,
+                                p_i->h,
+                                &W,
+                                &dWdr,
+                                &dWdh
+                            );
+
+                            local_rho += p_j->mass * W;
+                            drhodh += p_j->mass * dWdh;
+                        }
+
+                        // ==================================================
+                        // 2. Left reflective mirror across x = 0
+                        // x_j,ghost = -x_j
+                        // dx_L = x_i - (-x_j) = x_i + x_j
+                        // ==================================================
+                        if (p_i->x < p_i->h) {
+                            double dx_L = p_i->x + p_j->x;
+                            double r_L = sqrt(dx_L * dx_L + dy * dy + dz * dz);
+
+                            if (r_L <= p_i->h) {
+                                double W = 0.0;
+                                double dWdr = 0.0;
+                                double dWdh = 0.0;
+
+                                cubic_spline_kernel_3d(
+                                    r_L,
+                                    p_i->h,
+                                    &W,
+                                    &dWdr,
+                                    &dWdh
+                                );
+
+                                local_rho += p_j->mass * W;
+                                drhodh += p_j->mass * dWdh;
+                            }
+                        }
+
+                        // ==================================================
+                        // 3. Right reflective mirror across x = box_size_x
+                        // x_j,ghost = 2Lx - x_j
+                        // dx_R = x_i - (2Lx - x_j)
+                        //      = x_i + x_j - 2Lx
+                        // ==================================================
+                        if (p_i->x > sph->box_size_x - p_i->h) {
+                            double dx_R =
+                                p_i->x + p_j->x - 2.0 * sph->box_size_x;
+
+                            double r_R = sqrt(dx_R * dx_R + dy * dy + dz * dz);
+
+                            if (r_R <= p_i->h) {
+                                double W = 0.0;
+                                double dWdr = 0.0;
+                                double dWdh = 0.0;
+
+                                cubic_spline_kernel_3d(
+                                    r_R,
+                                    p_i->h,
+                                    &W,
+                                    &dWdr,
+                                    &dWdh
+                                );
+
+                                local_rho += p_j->mass * W;
+                                drhodh += p_j->mass * dWdh;
+                            }
+                        }
+
+                        j = sph->next[j];
+                    }
+                }
+            }
+        }
+
+        p_i->rho = local_rho;
+        p_i->drho_dh = drhodh;
+    }
+}
+=======
 void compute_density_1d_xreflective(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
@@ -615,3 +792,4 @@ void compute_density_1d_xreflective(SPHSystem *sph) {
     p_i->drho_dh = drhodh;
   }
 }
+>>>>>>> upstream/main

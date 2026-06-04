@@ -710,6 +710,35 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
     }
 }
 
+<<<<<<< HEAD
+
+
+
+void compute_force_xreflective_yzperiodic_celllist_3d(SPHSystem *sph)
+{
+    /*
+     * Precondition:
+     * build_cell_list_3d(sph) should already be called before this function.
+     *
+     * In your integrator, this is usually done inside:
+     * compute_density_xreflective_yzperiodic_celllist_3d(sph)
+     *
+     * If you want this force function to be fully independent,
+     * you can uncomment the following line:
+     *
+     * build_cell_list_3d(sph);
+     */
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        sph->particles[i].ax = 0.0;
+        sph->particles[i].ay = 0.0;
+        sph->particles[i].az = 0.0;
+        sph->particles[i].dudt = 0.0;
+    }
+=======
 __attribute__((always_inline)) static inline void compute_pairwise_physics_1d(
     Particle *p_i, Particle *p_j, SPHSystem *sph) {
   double dx = p_i->x - p_j->x;
@@ -773,10 +802,202 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
     sph->particles[i].ax = 0.0;
     sph->particles[i].dudt = 0.0;
   }
+>>>>>>> upstream/main
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif
+<<<<<<< HEAD
+    for (int i = 0; i < sph->N; i++) {
+
+        Particle *p_i = &sph->particles[i];
+
+        int cx_i = (int)(p_i->x / sph->cell_size);
+        int cy_i = (int)(p_i->y / sph->cell_size);
+        int cz_i = (int)(p_i->z / sph->cell_size);
+
+        if (cx_i < 0) cx_i = 0;
+        if (cx_i >= sph->num_cells_x) cx_i = sph->num_cells_x - 1;
+
+        if (cy_i < 0) cy_i = 0;
+        if (cy_i >= sph->num_cells_y) cy_i = sph->num_cells_y - 1;
+
+        if (cz_i < 0) cz_i = 0;
+        if (cz_i >= sph->num_cells_z) cz_i = sph->num_cells_z - 1;
+
+        /*
+         * Search 27 neighboring cells:
+         * dx direction: reflective wall, skip outside cells
+         * y,z directions: periodic wrapping
+         */
+        for (int d_cz = -1; d_cz <= 1; d_cz++) {
+            for (int d_cy = -1; d_cy <= 1; d_cy++) {
+                for (int d_cx = -1; d_cx <= 1; d_cx++) {
+
+                    int cx = cx_i + d_cx;
+                    int cy = cy_i + d_cy;
+                    int cz = cz_i + d_cz;
+
+                    // Y-periodic cell wrapping
+                    if (cy < 0) {
+                        cy += sph->num_cells_y;
+                    } else if (cy >= sph->num_cells_y) {
+                        cy -= sph->num_cells_y;
+                    }
+
+                    // Z-periodic cell wrapping
+                    if (cz < 0) {
+                        cz += sph->num_cells_z;
+                    } else if (cz >= sph->num_cells_z) {
+                        cz -= sph->num_cells_z;
+                    }
+
+                    // X-reflective: no real cells outside x walls
+                    if (cx < 0 || cx >= sph->num_cells_x) {
+                        continue;
+                    }
+
+                    int cell_index =
+                        cx
+                      + cy * sph->num_cells_x
+                      + cz * sph->num_cells_x * sph->num_cells_y;
+
+                    int j = sph->head[cell_index];
+
+                    while (j != -1) {
+
+                        Particle *p_j = &sph->particles[j];
+
+                        /*
+                         * Y/Z periodic minimum image.
+                         * Then reconstruct ghost_j.y and ghost_j.z
+                         * so that compute_pairwise_physics_3d() sees
+                         * the corrected displacement.
+                         */
+                        double dy = p_i->y - p_j->y;
+                        if (dy > 0.5 * sph->box_size_y) {
+                            dy -= sph->box_size_y;
+                        } else if (dy < -0.5 * sph->box_size_y) {
+                            dy += sph->box_size_y;
+                        }
+
+                        double dz = p_i->z - p_j->z;
+                        if (dz > 0.5 * sph->box_size_z) {
+                            dz -= sph->box_size_z;
+                        } else if (dz < -0.5 * sph->box_size_z) {
+                            dz += sph->box_size_z;
+                        }
+
+                        // ==================================================
+                        // 1. Real particle interaction
+                        // ==================================================
+                        if (i != j) {
+                            Particle ghost_j = *p_j;
+
+                            ghost_j.x = p_j->x;
+                            ghost_j.y = p_i->y - dy;
+                            ghost_j.z = p_i->z - dz;
+
+                            /*
+                             * Velocities are unchanged for periodic y/z.
+                             */
+                            ghost_j.vx = p_j->vx;
+                            ghost_j.vy = p_j->vy;
+                            ghost_j.vz = p_j->vz;
+
+                            compute_pairwise_physics_3d(p_i, &ghost_j, sph);
+                        }
+
+                        // ==================================================
+                        // 2. Left reflective mirror across x = 0
+                        // x_j,ghost = -x_j
+                        // vx_j,ghost = -vx_j
+                        // ==================================================
+                        if (p_i->x < sph->cell_size) {
+                            Particle ghost_j = *p_j;
+
+                            ghost_j.x = -p_j->x;
+                            ghost_j.y = p_i->y - dy;
+                            ghost_j.z = p_i->z - dz;
+
+                            ghost_j.vx = -p_j->vx;
+                            ghost_j.vy =  p_j->vy;
+                            ghost_j.vz =  p_j->vz;
+
+                            compute_pairwise_physics_3d(p_i, &ghost_j, sph);
+                        }
+
+                        // ==================================================
+                        // 3. Right reflective mirror across x = box_size_x
+                        // x_j,ghost = 2Lx - x_j
+                        // vx_j,ghost = -vx_j
+                        // ==================================================
+                        if (p_i->x > sph->box_size_x - sph->cell_size) {
+                            Particle ghost_j = *p_j;
+
+                            ghost_j.x = 2.0 * sph->box_size_x - p_j->x;
+                            ghost_j.y = p_i->y - dy;
+                            ghost_j.z = p_i->z - dz;
+
+                            ghost_j.vx = -p_j->vx;
+                            ghost_j.vy =  p_j->vy;
+                            ghost_j.vz =  p_j->vz;
+
+                            compute_pairwise_physics_3d(p_i, &ghost_j, sph);
+                        }
+
+                        j = sph->next[j];
+                    }
+                }
+            }
+        }
+    }
+
+    /*
+     * 4. Self-mirror interactions.
+     *
+     * This handles particle i interacting with its own reflected image
+     * near the left and right x-walls.
+     */
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+
+        Particle *p_i = &sph->particles[i];
+
+        // Left self-mirror
+        if (p_i->x < sph->cell_size) {
+            Particle ghost_self = *p_i;
+
+            ghost_self.x  = -p_i->x;
+            ghost_self.y  =  p_i->y;
+            ghost_self.z  =  p_i->z;
+
+            ghost_self.vx = -p_i->vx;
+            ghost_self.vy =  p_i->vy;
+            ghost_self.vz =  p_i->vz;
+
+            compute_pairwise_physics_3d(p_i, &ghost_self, sph);
+        }
+
+        // Right self-mirror
+        if (p_i->x > sph->box_size_x - sph->cell_size) {
+            Particle ghost_self = *p_i;
+
+            ghost_self.x  = 2.0 * sph->box_size_x - p_i->x;
+            ghost_self.y  = p_i->y;
+            ghost_self.z  = p_i->z;
+
+            ghost_self.vx = -p_i->vx;
+            ghost_self.vy =  p_i->vy;
+            ghost_self.vz =  p_i->vz;
+
+            compute_pairwise_physics_3d(p_i, &ghost_self, sph);
+        }
+    }
+}
+=======
   for (int i = 0; i < sph->N; i++) {
     Particle *p_i = &sph->particles[i];
 
@@ -822,3 +1043,4 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
     }
   }
 }
+>>>>>>> upstream/main

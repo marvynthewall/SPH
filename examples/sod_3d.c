@@ -131,13 +131,17 @@ int main(int argc, char *argv[])
 
     sph.gamma = 1.4;
     sph.cfl = 0.1;
-    sph.alpha = 0.5;
-    sph.beta = 0.3;
+    // sph.alpha = 0.5;
+    // sph.beta = 0.3;
+    sph.alpha = 0.0;
+    sph.beta = 0.0;
     sph.epsilon = 0.01;
 
-    compute_density_xreflective_yzperiodic_3d(&sph);
+    // compute_density_xreflective_yzperiodic_3d(&sph);
+    compute_density_xreflective_yzperiodic_celllist_3d(&sph);
     compute_pressure_soundspeed_factor(&sph);
-    compute_force_xreflective_yperiodic_zperiodic_3d(&sph);
+    // compute_force_xreflective_yperiodic_zperiodic_3d(&sph);
+    compute_force_xreflective_yzperiodic_celllist_3d(&sph);
 
     double t = 0.0;
     int step = 0;
@@ -194,7 +198,11 @@ int main(int argc, char *argv[])
         double dt = step_leapfrog_kdk_xreflective_yzperiodic_3d(
             &sph,
             compute_timestep_signal_velocity_3d,
-            compute_force_xreflective_yperiodic_zperiodic_3d);
+            compute_force_xreflective_yzperiodic_celllist_3d);
+        // double dt = step_leapfrog_kdk_xreflective_yzperiodic_3d(
+        //     &sph,
+        //     compute_timestep_signal_velocity_3d,
+        //     compute_force_xreflective_yperiodic_zperiodic_3d);
 
         t += dt;
 
