@@ -212,9 +212,9 @@ int main(int argc, char *argv[]) {
             copy_particles_D2H(&sph);
 #endif
             if (strcmp(output_format, "bin") == 0)
-                write_binary_2d(&sph, filename);
+                write_binary(&sph, filename);
             else if(strcmp(output_format, "csv") == 0)
-                write_csv_2d(&sph, filename);
+                write_csv(&sph, filename);
             printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
                     filename);
             // 2. 將當下的 frame 與精確時間 t 寫入 log
