@@ -24,8 +24,8 @@ int main(int argc, char *argv[]) {
   const char *mass_c = "0.001";
   double x = 15.0;
   const char *x_c = "15.0";
-  double t_end = 5.0;
-  const char *t_c = "5.0";
+  double t_end = 4.0;
+  const char *t_c = "4.0";
 #ifdef _OPENMP
   int num_threads = 0;
 #endif
