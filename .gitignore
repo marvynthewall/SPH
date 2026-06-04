@@ -13,6 +13,7 @@ tests/test_integrator
 *.png
 *.gif
 *.mp4
+*.h5
 .vscode
 *old*
 __pycache__/

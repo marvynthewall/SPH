@@ -568,7 +568,6 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
   }
 }
 
-<<<<<<< HEAD
 
 void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
 
@@ -744,7 +743,6 @@ void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
         p_i->drho_dh = drhodh;
     }
 }
-=======
 void compute_density_1d_xreflective(SPHSystem *sph) {
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
@@ -792,4 +790,3 @@ void compute_density_1d_xreflective(SPHSystem *sph) {
     p_i->drho_dh = drhodh;
   }
 }
->>>>>>> upstream/main
