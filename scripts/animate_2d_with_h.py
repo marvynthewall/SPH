@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.patches import Circle
@@ -42,9 +43,11 @@ circles = [Circle((x, y), r) for x, y, r in zip(df['x'], df['y'], df['h'])]
 patch_col = PatchCollection(circles, alpha=0.15, facecolor='gray', edgecolor='none', zorder=1)
 ax.add_collection(patch_col)
 
+N = len(df)
+dynamic_s = np.interp(N, [500, 8000, 80000], [5.0, 2.0, 1.0])
 # --- 繪製初始的粒子中心 (前景層) ---
 # 【調整】將 s 從 5 縮小到 1 或 2，讓點點看起來更細緻
-sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=1.5, zorder=2, vmin=0.0, vmax=1.2, cmap='viridis')
+sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=dynamic_s, zorder=2, vmin=0.0, vmax=1.2, cmap='viridis')
 
 # 圖表格式設定
 # 【調整】使用 pad 控制 colorbar 與主圖的距離，shrink 控制它的長度（不讓它撐開上下留白）

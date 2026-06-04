@@ -1,4 +1,4 @@
-#include "density.h"
+#include "sph_all.h"
 
 void update_adaptive_h(SPHSystem *sph, int max_iter, double tol, double eta,
                        void (*compute_density_fn)(SPHSystem *)) {
@@ -568,6 +568,7 @@ void compute_density_xreflective_yzperiodic_3d(SPHSystem *sph) {
   }
 }
 
+<<<<<<< HEAD
 
 void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
 
@@ -743,3 +744,52 @@ void compute_density_xreflective_yzperiodic_celllist_3d(SPHSystem *sph) {
         p_i->drho_dh = drhodh;
     }
 }
+=======
+void compute_density_1d_xreflective(SPHSystem *sph) {
+#ifdef _OPENMP
+#pragma omp parallel for schedule(dynamic)
+#endif
+  for (int i = 0; i < sph->N; i++) {
+    double local_rho = 0.0;
+    double drhodh = 0.0;
+    Particle *p_i = &sph->particles[i];
+
+    for (int j = 0; j < sph->N; j++) {
+      Particle *p_j = &sph->particles[j];
+
+      double dx = p_i->x - p_j->x;
+      double r = fabs(dx);
+
+      if (r <= p_i->h) {
+        double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+        cubic_spline_kernel_1d(r, p_i->h, &W, &dWdr, &dWdh);
+        local_rho += p_j->mass * W;
+        drhodh += p_j->mass * dWdh;
+      }
+
+      // Left mirror (reflected across x=0)
+      double dx_L = p_i->x + p_j->x;
+      double r_L = fabs(dx_L);
+      if (r_L <= p_i->h) {
+        double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+        cubic_spline_kernel_1d(r_L, p_i->h, &W, &dWdr, &dWdh);
+        local_rho += p_j->mass * W;
+        drhodh += p_j->mass * dWdh;
+      }
+
+      // Right mirror (reflected across x=box_size_x)
+      double dx_R = p_i->x + p_j->x - 2.0 * sph->box_size_x;
+      double r_R = fabs(dx_R);
+      if (r_R <= p_i->h) {
+        double W = 0.0, dWdr = 0.0, dWdh = 0.0;
+        cubic_spline_kernel_1d(r_R, p_i->h, &W, &dWdr, &dWdh);
+        local_rho += p_j->mass * W;
+        drhodh += p_j->mass * dWdh;
+      }
+    }
+
+    p_i->rho = local_rho;
+    p_i->drho_dh = drhodh;
+  }
+}
+>>>>>>> upstream/main

@@ -1,6 +1,4 @@
-#ifndef DENSITY_H
-#define DENSITY_H
-
+#pragma once
 #include "sph_system.h"
 /*
  * Calculate the density of all particles
@@ -23,6 +21,7 @@
  */
 void compute_density(SPHSystem *sph);
 void compute_density_3d(SPHSystem *sph);
+void compute_density_1d_xreflective(SPHSystem *sph);
 void compute_density_xreflective_yperiodic(SPHSystem *sph);
 void compute_density_xperiodic_yperiodic(SPHSystem *sph);
 void compute_density_xreflective_yperiodic_celllist(SPHSystem *sph);
@@ -34,4 +33,9 @@ void update_adaptive_h(SPHSystem *sph, int max_iter, double tol, double eta,
 void update_adaptive_h_3d(SPHSystem *sph, int max_iter, double tol, double eta,
                           void (*compute_density_fn)(SPHSystem *));
 void check_adaptive_h(SPHSystem *sph, double eta, double tol);
-#endif
+
+// GPU
+
+void update_adaptive_h_gpu(SPHSystem *sph, int max_iter, double tol, double eta,
+                       void (*compute_density_fn)(SPHSystem *));
+void compute_density_xreflective_yperiodic_celllist_gpu(SPHSystem *sph);

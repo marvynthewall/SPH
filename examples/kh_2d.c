@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
@@ -7,12 +7,24 @@ int main(int argc, char *argv[]) {
 
   int nx = 128;
   int ny = 128;
+  char output_folder[128] = "sph_kh_2d_output";
 
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
       nx = atoi(argv[i + 1]);
       ny = atoi(argv[i + 1]);
       i++;
+    } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+      strncpy(output_folder, argv[i + 1], sizeof(output_folder) - 1);
+      output_folder[sizeof(output_folder) - 1] = '\0';
+      i++;
+    }
+  }
+
+  if (mkdir(output_folder, 0777) == -1) {
+    if (errno != EEXIST) {
+      printf("Error: Could not create directory %s\n", output_folder);
+      return 1;
     }
   }
 
@@ -45,7 +57,7 @@ int main(int argc, char *argv[]) {
     if (t >= next_output_time) {
       printf("output_time: %.4f\n", t);
       char filename[256];
-      sprintf(filename, "output_%04d.csv", output_step);
+      sprintf(filename, "%s/output_%04d.csv", output_folder, output_step);
       write_csv(&sph, filename);
       printf("Step %d | Time: %.4f | dt: %.6f | Output: %s\n", step, t, sph.dt,
              filename);

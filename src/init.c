@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 
 int check_particle_number(const SPHSystem *sph, int nx, int ny,
                           const char *func_name) {
@@ -254,6 +254,7 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
                    double target_mass) {
   double gamma = 1.4;
 
+  /*
   // Macroscopic physical quantities
   double rho_L = 1.0, P_L = 1.0;
   double rho_R = 0.125, P_R = 0.1;
@@ -277,14 +278,63 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
   int N_L = nx_L * ny_L;
   int N_R = nx_R * ny_R;
   int N = N_L + N_R;
+  */
+
+  // Macroscopic physical quantities
+  double rho_L = 1.0, P_L = 1.0;
+  double rho_R = 0.125, P_R = 0.1;
+  double eta = 1.3;
+
+  double target_x_mid = x_max / 2.0;
+
+  // 1. 理論上的完美正方間距 (Ideal spacing)
+  double ideal_dx_L = sqrt(target_mass / rho_L);
+  double ideal_dx_R = sqrt(target_mass / rho_R);
+
+  // 2. 以 Y 軸為基準，確保 Y-Periodic 完美無縫
+  int ny_L = (int)round(y_max / ideal_dx_L);
+  int ny_R = (int)round(y_max / ideal_dx_R);
+
+  double dy_L = y_max / (double)ny_L;
+  double dy_R = y_max / (double)ny_R;
+
+  // ==========================================
+  // 3. 強制 X 間距等於 Y 間距，打造「絕對正方形」網格
+  // ==========================================
+  double dx_L = dy_L;
+  double dx_R = dy_R;
+
+  // 4. 計算 X 方向需要的粒子數
+  int nx_L = (int)round(target_x_mid / dx_L);
+  int nx_R = (int)round((x_max - target_x_mid) / dx_R);
+
+  // ==========================================
+  // 5. 動態修正物理邊界！讓空間去遷就完美的網格
+  // ==========================================
+  double actual_x_mid = nx_L * dx_L;
+  double actual_x_max = actual_x_mid + nx_R * dx_R;
+
+  double actual_mass_L = rho_L * dx_L * dy_L;
+  double actual_mass_R = rho_R * dx_R * dy_R;
+
+  // 5. 總粒子數
+  int N_L = nx_L * ny_L;
+  int N_R = nx_R * ny_R;
+  int N = N_L + N_R;
 
   printf("Number of Particles: %d\n", N);
 
   // Allocate memory for the SPH system
   allocate_sph_system(sph, N);
 
+#ifdef __CUDACC__
+  copy_particles_H2D(sph);
+  printf("host 2 devise\n");
+#endif
+
   sph->gamma = gamma;
-  sph->box_size_x = x_max;
+  // the refined x max
+  sph->box_size_x = actual_x_max;
   sph->box_size_y = y_max;
 
   // Pre-calculate smoothing lengths for both regions
@@ -293,179 +343,176 @@ void init_sod_2d_3(SPHSystem *sph, double x_max, double y_max,
 
   int p_idx = 0; // Particle array index
 
-  // 4. Distribute the high-pressure fluid in the left region
-  // (Center the grid by adding an offset, leaving half a dx as the distance to
-  // the walls)
+  // 假設你已經用 x_mid / nx_L 算出了完美貼合的 dx_L, dy_L, dx_R, dy_R
+    // (參考上一則對話的步驟 3)
+
+    // 4. Distribute the high-pressure fluid in the left region
+    for (int i = 0; i < nx_L; i++) {
+      for (int j = 0; j < ny_L; j++) {
+        Particle *p = &sph->particles[p_idx++];
+        p->id = p_idx;
+
+        // 【修正位置】直接用 0.5 * dx，確保緊貼牆壁，不留任何縫隙
+        p->x = (i + 0.5) * dx_L;
+        p->y = (j + 0.5) * dy_L;
+
+        // 【修正質量】
+        p->mass = actual_mass_L;
+        p->rho = rho_L;
+        p->pressure = P_L;
+        p->u = P_L / ((gamma - 1.0) * rho_L);
+        p->h = h_L;
+        p->cs = sqrt(gamma * P_L / rho_L);
+        p->vx = 0.0;
+        p->vy = 0.0;
+      }
+    }
+
+    // 5. Distribute the low-pressure fluid in the right region
+    for (int i = 0; i < nx_R; i++) {
+      for (int j = 0; j < ny_R; j++) {
+        Particle *p = &sph->particles[p_idx++];
+        p->id = p_idx;
+
+        // 【修正位置】X 座標從 actual_x_mid 開始，依然緊貼交界面與右牆
+        p->x = actual_x_mid + (i + 0.5) * dx_R;
+        p->y = (j + 0.5) * dy_R;
+
+        // 【修正質量 Typo】這裡是右半邊！
+        p->mass = actual_mass_R;
+        p->rho = rho_R;
+        p->pressure = P_R;
+        p->u = P_R / ((gamma - 1.0) * rho_R);
+        p->h = h_R;
+        p->cs = sqrt(gamma * P_R / rho_R);
+        p->vx = 0.0;
+        p->vy = 0.0;
+      }
+    }
+}
+
+void init_sod_3d_3(SPHSystem *sph, double x_max, double y_max, double z_max,
+                   double target_mass) {
+  double gamma = 1.4;
+
+  // Macroscopic physical quantities
+  double rho_L = 1.0, P_L = 1.0;
+  double rho_R = 0.125, P_R = 0.1;
+  double eta = 1.3;
+
+  double x_mid = x_max / 2.0;
+
+  // 1. Derive cubic spacing from target mass and density
+  double dx_L = cbrt(target_mass / rho_L);
+  double dx_R = cbrt(target_mass / rho_R);
+
+  // 2. Calculate number of particles in each region
+  int nx_L = (int)(x_mid / dx_L);
+  int ny_L = (int)(y_max / dx_L);
+  int nz_L = (int)(z_max / dx_L);
+
+  int nx_R = (int)((x_max - x_mid) / dx_R);
+  int ny_R = (int)(y_max / dx_R);
+  int nz_R = (int)(z_max / dx_R);
+
+  // 3. Total particle number
+  int N_L = nx_L * ny_L * nz_L;
+  int N_R = nx_R * ny_R * nz_R;
+  int N = N_L + N_R;
+
+  printf("Number of Particles: %d\n", N);
+
+  allocate_sph_system(sph, N);
+
+  sph->dim = 3;
+  sph->gamma = gamma;
+  sph->box_size_x = x_max;
+  sph->box_size_y = y_max;
+  sph->box_size_z = z_max;
+
+  // 4. Smoothing lengths
+  double h_L = eta * dx_L;
+  double h_R = eta * dx_R;
+
+  int p_idx = 0;
+
+  // 5. Left region: high density / high pressure
   double offset_x_L = (x_mid - (nx_L * dx_L)) / 2.0 + (dx_L / 2.0);
   double offset_y_L = (y_max - (ny_L * dx_L)) / 2.0 + (dx_L / 2.0);
+  double offset_z_L = (z_max - (nz_L * dx_L)) / 2.0 + (dx_L / 2.0);
 
   for (int i = 0; i < nx_L; i++) {
     for (int j = 0; j < ny_L; j++) {
-      Particle *p = &sph->particles[p_idx++];
-      p->id = p_idx;
-      p->x = offset_x_L + i * dx_L;
-      p->y = offset_y_L + j * dx_L;
-      p->mass = target_mass;
-      p->rho = rho_L;
-      p->pressure = P_L;
-      p->u = P_L / ((gamma - 1.0) * rho_L);
-      p->h = h_L;
-      p->cs = sqrt(gamma * P_L / rho_L);
-      p->vx = 0.0;
-      p->vy = 0.0;
+      for (int k = 0; k < nz_L; k++) {
+
+        Particle *p = &sph->particles[p_idx++];
+
+        p->id = p_idx;
+
+        p->x = offset_x_L + i * dx_L;
+        p->y = offset_y_L + j * dx_L;
+        p->z = offset_z_L + k * dx_L;
+
+        p->mass = target_mass;
+
+        p->rho = rho_L;
+        p->pressure = P_L;
+        p->u = P_L / ((gamma - 1.0) * rho_L);
+
+        p->h = h_L;
+        p->cs = sqrt(gamma * P_L / rho_L);
+
+        p->vx = 0.0;
+        p->vy = 0.0;
+        p->vz = 0.0;
+
+        p->ax = 0.0;
+        p->ay = 0.0;
+        p->az = 0.0;
+        p->drho_dh = 0.0;
+        p->factor = 1.0;
+      }
     }
   }
 
-  // 5. Distribute the low-pressure fluid in the right region
-  // (X coordinates start from x_mid)
+  // 6. Right region: low density / low pressure
   double offset_x_R =
       x_mid + ((x_max - x_mid - (nx_R * dx_R)) / 2.0) + (dx_R / 2.0);
   double offset_y_R = (y_max - (ny_R * dx_R)) / 2.0 + (dx_R / 2.0);
+  double offset_z_R = (z_max - (nz_R * dx_R)) / 2.0 + (dx_R / 2.0);
 
   for (int i = 0; i < nx_R; i++) {
     for (int j = 0; j < ny_R; j++) {
-      Particle *p = &sph->particles[p_idx++];
-      p->id = p_idx;
-      p->x = offset_x_R + i * dx_R;
-      p->y = offset_y_R + j * dx_R;
-      p->mass = target_mass;
-      p->rho = rho_R;
-      p->pressure = P_R;
-      p->u = P_R / ((gamma - 1.0) * rho_R);
-      p->h = h_R;
-      p->cs = sqrt(gamma * P_R / rho_R);
-      p->vx = 0.0;
-      p->vy = 0.0;
+      for (int k = 0; k < nz_R; k++) {
+
+        Particle *p = &sph->particles[p_idx++];
+
+        p->id = p_idx;
+
+        p->x = offset_x_R + i * dx_R;
+        p->y = offset_y_R + j * dx_R;
+        p->z = offset_z_R + k * dx_R;
+
+        p->mass = target_mass;
+
+        p->rho = rho_R;
+        p->pressure = P_R;
+        p->u = P_R / ((gamma - 1.0) * rho_R);
+
+        p->h = h_R;
+        p->cs = sqrt(gamma * P_R / rho_R);
+
+        p->vx = 0.0;
+        p->vy = 0.0;
+        p->vz = 0.0;
+
+        p->ax = 0.0;
+        p->ay = 0.0;
+        p->az = 0.0;
+      }
     }
   }
 }
-
-
-void init_sod_3d_3(SPHSystem *sph, double x_max, double y_max, double z_max, double target_mass)
-{
-    double gamma = 1.4;
-
-    // Macroscopic physical quantities
-    double rho_L = 1.0,   P_L = 1.0;
-    double rho_R = 0.125, P_R = 0.1;
-    double eta = 1.3;
-
-    double x_mid = x_max / 2.0;
-
-    // 1. Derive cubic spacing from target mass and density
-    double dx_L = cbrt(target_mass / rho_L);
-    double dx_R = cbrt(target_mass / rho_R);
-
-    // 2. Calculate number of particles in each region
-    int nx_L = (int)(x_mid / dx_L);
-    int ny_L = (int)(y_max / dx_L);
-    int nz_L = (int)(z_max / dx_L);
-
-    int nx_R = (int)((x_max - x_mid) / dx_R);
-    int ny_R = (int)(y_max / dx_R);
-    int nz_R = (int)(z_max / dx_R);
-
-    // 3. Total particle number
-    int N_L = nx_L * ny_L * nz_L;
-    int N_R = nx_R * ny_R * nz_R;
-    int N = N_L + N_R;
-
-    printf("Number of Particles: %d\n", N);
-
-    allocate_sph_system(sph, N);
-
-    sph->dim = 3;
-    sph->gamma = gamma;
-    sph->box_size_x = x_max;
-    sph->box_size_y = y_max;
-    sph->box_size_z = z_max;
-
-    // 4. Smoothing lengths
-    double h_L = eta * dx_L;
-    double h_R = eta * dx_R;
-
-    int p_idx = 0;
-
-    // 5. Left region: high density / high pressure
-    double offset_x_L = (x_mid - (nx_L * dx_L)) / 2.0 + (dx_L / 2.0);
-    double offset_y_L = (y_max - (ny_L * dx_L)) / 2.0 + (dx_L / 2.0);
-    double offset_z_L = (z_max - (nz_L * dx_L)) / 2.0 + (dx_L / 2.0);
-
-    for (int i = 0; i < nx_L; i++) {
-        for (int j = 0; j < ny_L; j++) {
-            for (int k = 0; k < nz_L; k++) {
-
-                Particle *p = &sph->particles[p_idx++];
-
-                p->id = p_idx;
-
-                p->x = offset_x_L + i * dx_L;
-                p->y = offset_y_L + j * dx_L;
-                p->z = offset_z_L + k * dx_L;
-
-                p->mass = target_mass;
-
-                p->rho = rho_L;
-                p->pressure = P_L;
-                p->u = P_L / ((gamma - 1.0) * rho_L);
-
-                p->h = h_L;
-                p->cs = sqrt(gamma * P_L / rho_L);
-
-                p->vx = 0.0;
-                p->vy = 0.0;
-                p->vz = 0.0;
-
-                p->ax = 0.0;
-                p->ay = 0.0;
-                p->az = 0.0;
-                p->drho_dh = 0.0;
-                p->factor = 1.0;
-            }
-        }
-    }
-
-    // 6. Right region: low density / low pressure
-    double offset_x_R =
-        x_mid + ((x_max - x_mid - (nx_R * dx_R)) / 2.0) + (dx_R / 2.0);
-    double offset_y_R = (y_max - (ny_R * dx_R)) / 2.0 + (dx_R / 2.0);
-    double offset_z_R = (z_max - (nz_R * dx_R)) / 2.0 + (dx_R / 2.0);
-
-    for (int i = 0; i < nx_R; i++) {
-        for (int j = 0; j < ny_R; j++) {
-            for (int k = 0; k < nz_R; k++) {
-
-                Particle *p = &sph->particles[p_idx++];
-
-                p->id = p_idx;
-
-                p->x = offset_x_R + i * dx_R;
-                p->y = offset_y_R + j * dx_R;
-                p->z = offset_z_R + k * dx_R;
-
-                p->mass = target_mass;
-
-                p->rho = rho_R;
-                p->pressure = P_R;
-                p->u = P_R / ((gamma - 1.0) * rho_R);
-
-                p->h = h_R;
-                p->cs = sqrt(gamma * P_R / rho_R);
-
-                p->vx = 0.0;
-                p->vy = 0.0;
-                p->vz = 0.0;
-
-                p->ax = 0.0;
-                p->ay = 0.0;
-                p->az = 0.0;
-            }
-        }
-    }
-}
-
-
-
 
 void init_KH(SPHSystem *sph, int nx, int ny) {
   // Use constants from section 5.5 Contact Discontinuities and Fluid
@@ -525,5 +572,85 @@ void init_KH(SPHSystem *sph, int nx, int ny) {
       p->h = h_uniform;
       p->cs = sqrt(gamma * P_0 / rho);
     }
+  }
+}
+
+void init_sod_1d(SPHSystem *sph, double x_max, double target_mass) {
+  double gamma = 1.4;
+
+  double rho_L = 1.0, P_L = 1.0;
+  double rho_R = 0.125, P_R = 0.1;
+  double eta = 1.3;
+
+  double x_mid = x_max / 2.0;
+
+  double dx_L = target_mass / rho_L;
+  double dx_R = target_mass / rho_R;
+
+  int nx_L = (int)(x_mid / dx_L);
+  int nx_R = (int)((x_max - x_mid) / dx_R);
+
+  int N = nx_L + nx_R;
+  printf("Number of Particles (1D): %d\n", N);
+
+  allocate_sph_system(sph, N);
+
+  sph->gamma = gamma;
+  sph->box_size_x = x_max;
+  sph->box_size_y = 1.0; // Dummy
+  sph->box_size_z = 1.0; // Dummy
+
+  double h_L = eta * dx_L;
+  double h_R = eta * dx_R;
+
+  int p_idx = 0;
+
+  double offset_x_L = (x_mid - (nx_L * dx_L)) / 2.0 + (dx_L / 2.0);
+
+  for (int i = 0; i < nx_L; i++) {
+    Particle *p = &sph->particles[p_idx++];
+    p->id = p_idx;
+    p->x = offset_x_L + i * dx_L;
+    p->y = 0.0;
+    p->z = 0.0;
+    p->mass = target_mass;
+    p->rho = rho_L;
+    p->pressure = P_L;
+    p->u = P_L / ((gamma - 1.0) * rho_L);
+    p->h = h_L;
+    p->cs = sqrt(gamma * P_L / rho_L);
+    p->vx = 0.0;
+    p->vy = 0.0;
+    p->vz = 0.0;
+    p->ax = 0.0;
+    p->ay = 0.0;
+    p->az = 0.0;
+    p->drho_dh = 0.0;
+    p->factor = 1.0;
+  }
+
+  double offset_x_R =
+      x_mid + ((x_max - x_mid - (nx_R * dx_R)) / 2.0) + (dx_R / 2.0);
+
+  for (int i = 0; i < nx_R; i++) {
+    Particle *p = &sph->particles[p_idx++];
+    p->id = p_idx;
+    p->x = offset_x_R + i * dx_R;
+    p->y = 0.0;
+    p->z = 0.0;
+    p->mass = target_mass;
+    p->rho = rho_R;
+    p->pressure = P_R;
+    p->u = P_R / ((gamma - 1.0) * rho_R);
+    p->h = h_R;
+    p->cs = sqrt(gamma * P_R / rho_R);
+    p->vx = 0.0;
+    p->vy = 0.0;
+    p->vz = 0.0;
+    p->ax = 0.0;
+    p->ay = 0.0;
+    p->az = 0.0;
+    p->drho_dh = 0.0;
+    p->factor = 1.0;
   }
 }

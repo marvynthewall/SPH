@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import glob
@@ -34,6 +35,8 @@ fig, ax = plt.subplots(figsize=(16, 4), layout='constrained')
 # 讀取第一幀資料
 df = pd.read_csv(files[0])
 
+N = len(df)
+dynamic_s = np.interp(N, [500, 8000, 80000], [5.0, 2.0, 1.0])
 # --- 繪製初始的粒子中心 (前景層) ---
 # 【調整】將 s 從 5 縮小到 1 或 2，讓點點看起來更細緻
 sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=1.5, zorder=2, vmin=0.0, vmax=1.2, cmap='viridis')

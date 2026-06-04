@@ -1,4 +1,4 @@
-#include "sph_system.h"
+#include "sph_all.h"
 #ifdef _OPENMP
 #include <omp.h>
 #endif
@@ -15,8 +15,8 @@ int main(int argc, char *argv[])
     double mass = 0.001;
     char *mass_c = "0.001";
 
-    double x = 5.0;
-    char *x_c = "5.0";
+    double x = 15.0;
+    const char *x_c = "15.0";
 
     double y = 1.0;
     char *y_c = "1.0";
