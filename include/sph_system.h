@@ -85,6 +85,7 @@ typedef struct {
     double cell_size;     // size (>= max_h)
     int num_cells_x;      // X cells
     int num_cells_y;      // Y cells
+    int num_cells_z;      // Z cells
     int total_cells;      // = num_cells_x * num_cells_y
     
     int *head;            // array size = total_cells

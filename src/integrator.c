@@ -75,6 +75,75 @@ void build_cell_list(SPHSystem *sph) {
 }
 
 
+void build_cell_list_3d(SPHSystem *sph) {
+    double max_h = 0.0;
+
+#ifdef _OPENMP
+#pragma omp parallel for reduction(max:max_h)
+#endif
+    for (int i = 0; i < sph->N; i++) {
+        if (sph->particles[i].h > max_h) {
+            max_h = sph->particles[i].h;
+        }
+    }
+
+    if (max_h < 1.0e-4) {
+        max_h = 1.0e-4;
+    }
+
+    sph->cell_size = max_h;
+
+    sph->num_cells_x = (int)ceil(sph->box_size_x / sph->cell_size);
+    sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
+    sph->num_cells_z = (int)ceil(sph->box_size_z / sph->cell_size);
+
+    int new_total_cells =
+        sph->num_cells_x * sph->num_cells_y * sph->num_cells_z;
+
+    if (new_total_cells != sph->total_cells) {
+        if (sph->head) {
+            free(sph->head);
+        }
+
+        sph->head = (int *)malloc(new_total_cells * sizeof(int));
+
+        if (sph->head == NULL) {
+            fprintf(stderr, "Error: failed to allocate head in build_cell_list_3d.\n");
+            exit(EXIT_FAILURE);
+        }
+
+        sph->total_cells = new_total_cells;
+    }
+
+#ifdef _OPENMP
+#pragma omp parallel for schedule(static)
+#endif
+    for (int c = 0; c < sph->total_cells; c++) {
+        sph->head[c] = -1;
+    }
+
+    // Linked-list insertion: do not parallelize, otherwise race condition
+    for (int i = 0; i < sph->N; i++) {
+        Particle *p = &sph->particles[i];
+
+        double x = fmax(0.0, fmin(p->x, sph->box_size_x - 1.0e-9));
+        double y = fmax(0.0, fmin(p->y, sph->box_size_y - 1.0e-9));
+        double z = fmax(0.0, fmin(p->z, sph->box_size_z - 1.0e-9));
+
+        int cx = (int)(x / sph->cell_size);
+        int cy = (int)(y / sph->cell_size);
+        int cz = (int)(z / sph->cell_size);
+
+        int cell_index = cx + cy * sph->num_cells_x + cz * sph->num_cells_x * sph->num_cells_y;
+
+        sph->next[i] = sph->head[cell_index];
+        sph->head[cell_index] = i;
+    }
+}
+
+
+
+
 double compute_timestep(SPHSystem *sph) {
   double dt_min = DBL_MAX;
   double cfl = sph->cfl;
@@ -753,9 +822,9 @@ double step_leapfrog_kdk_xreflective_yzperiodic_3d(
    * These functions must be 3D and boundary-consistent.
    */
   update_adaptive_h_3d(sph, 20, 1.0e-4, 2.3,
-                       compute_density_xreflective_yzperiodic_3d);
+                       compute_density_xreflective_yzperiodic_celllist_3d);
 
-  compute_density_xreflective_yzperiodic_3d(sph);
+  compute_density_xreflective_yzperiodic_celllist_3d(sph);
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
 

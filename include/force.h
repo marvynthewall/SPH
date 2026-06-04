@@ -11,5 +11,6 @@ void compute_force_xreflective_yperiodic_celllist(SPHSystem *sph);
 
 void compute_force_3d(SPHSystem *sph);
 void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph);
+void compute_force_xreflective_yzperiodic_celllist_3d(SPHSystem *sph);
 
 #endif
