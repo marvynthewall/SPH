@@ -4,7 +4,6 @@
 #include <omp.h>
 #endif
 
-<<<<<<< HEAD
 void build_cell_list(SPHSystem *sph) {
     // 1. find the max h, for the safe grid size
     double max_h = 0.0;
@@ -145,8 +144,6 @@ void build_cell_list_3d(SPHSystem *sph) {
 
 
 
-=======
->>>>>>> upstream/main
 double compute_timestep(SPHSystem *sph) {
     double dt_min = DBL_MAX;
     double cfl = sph->cfl;
@@ -891,19 +888,8 @@ double step_leapfrog_kdk_1d_xreflective(SPHSystem *sph, double (*calculate_time_
 
   sph->time += dt;
 
-<<<<<<< HEAD
-  /*
-   * Update hydrodynamic quantities at the new position.
-   * These functions must be 3D and boundary-consistent.
-   */
-  update_adaptive_h_3d(sph, 20, 1.0e-4, 2.3,
-                       compute_density_xreflective_yzperiodic_celllist_3d);
-
-  compute_density_xreflective_yzperiodic_celllist_3d(sph);
-=======
   update_adaptive_h(sph, 20, 1e-4, 2.3, compute_density_1d_xreflective);
   compute_density_1d_xreflective(sph);
->>>>>>> upstream/main
   compute_pressure_soundspeed_factor(sph);
   compute_forces(sph);
 

@@ -710,7 +710,6 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
     }
 }
 
-<<<<<<< HEAD
 
 
 
@@ -738,9 +737,8 @@ void compute_force_xreflective_yzperiodic_celllist_3d(SPHSystem *sph)
         sph->particles[i].az = 0.0;
         sph->particles[i].dudt = 0.0;
     }
-=======
-__attribute__((always_inline)) static inline void compute_pairwise_physics_1d(
-    Particle *p_i, Particle *p_j, SPHSystem *sph) {
+}
+__attribute__((always_inline)) static inline void compute_pairwise_physics_1d( Particle *p_i, Particle *p_j, SPHSystem *sph) {
   double dx = p_i->x - p_j->x;
   double r = fabs(dx);
   if (r < 1e-12) return;
@@ -802,12 +800,10 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
     sph->particles[i].ax = 0.0;
     sph->particles[i].dudt = 0.0;
   }
->>>>>>> upstream/main
 
 #ifdef _OPENMP
 #pragma omp parallel for schedule(dynamic)
 #endif
-<<<<<<< HEAD
     for (int i = 0; i < sph->N; i++) {
 
         Particle *p_i = &sph->particles[i];
@@ -950,9 +946,8 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
                     }
                 }
             }
-        }
     }
-
+}
     /*
      * 4. Self-mirror interactions.
      *
@@ -996,8 +991,6 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
             compute_pairwise_physics_3d(p_i, &ghost_self, sph);
         }
     }
-}
-=======
   for (int i = 0; i < sph->N; i++) {
     Particle *p_i = &sph->particles[i];
 
@@ -1043,4 +1036,4 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
     }
   }
 }
->>>>>>> upstream/main
+
