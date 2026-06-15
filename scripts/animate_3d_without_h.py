@@ -18,7 +18,7 @@ parser.add_argument("-o", "--outputfilename", type=str,
                     default="sod3d_animation",
                     help="Output filename")
 
-parser.add_argument("-x", "--x_lim", type=float, default=5.0,
+parser.add_argument("-x", "--x_lim", type=float, default=15.0,
                     help="x direction limit")
 
 parser.add_argument("-y", "--y_lim", type=float, default=1.0,

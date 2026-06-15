@@ -120,79 +120,82 @@ void free_sph_system(SPHSystem *sph)
     sph->next = NULL;
 }
 
-
 void build_cell_list(SPHSystem *sph) {
     // 1. find the max h, for the safe grid size
     double max_h = 0.0;
-    #ifdef _OPENMP
-    #pragma omp parallel for reduction(max:max_h)
-    #endif
+#ifdef _OPENMP
+#pragma omp parallel for reduction(max:max_h)
+#endif
     for (int i = 0; i < sph->N; i++) {
         if (sph->particles[i].h > max_h) {
             max_h = sph->particles[i].h;
         }
     }
-    
+
     // prevent too many cells
     if (max_h < 1e-4) max_h = 1e-4;
-    // prevent too many cells causing Integer Overflow and OOM!
-    // double min_cell_x = sph->box_size_x / 2000.0; // 確保 X 軸最多切 2000 格
-    // double min_cell_y = sph->box_size_y / 2000.0;
-    // double safe_min_h = fmax(min_cell_x, min_cell_y);
-    // safe_min_h = fmax(safe_min_h, 1e-4); // 保留原本的絕對底線
 
-    // max_h = max(max_h, safe_min_h);
-    
-    // 2. cell size
-    sph->cell_size = max_h; 
-    
+    // 2. cell size (Restored logic for Periodic Boundary Alignment)
+    int optimal_ny = (int)floor(sph->box_size_y / max_h);
+    if (optimal_ny < 1) optimal_ny = 1; // 防呆機制
+
+    double safe_cell_size = sph->box_size_y / (double)optimal_ny;
+    sph->cell_size = safe_cell_size;
+
     // 3. number of cells
     sph->num_cells_x = (int)ceil(sph->box_size_x / sph->cell_size);
-    sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
+    sph->num_cells_y = optimal_ny;
     int new_total_cells = sph->num_cells_x * sph->num_cells_y;
-    
+
     // 4. reallocate the length of the head array
     if (new_total_cells != sph->total_cells) {
         if (sph->head) free(sph->head);
         sph->head = (int *)malloc(new_total_cells * sizeof(int));
+
+// Restored GPU memory allocation for d_head
+#ifdef __CUDACC__
+        if (sph->d_head) cudaFree(sph->d_head);
+        cudaMalloc((void**)&sph->d_head, new_total_cells * sizeof(int));
+#endif
+
         sph->total_cells = new_total_cells;
     }
-    
+
     // 5. initialize the head
-    #ifdef _OPENMP
-    #pragma omp parallel for
-    #endif
+#ifdef _OPENMP
+#pragma omp parallel for
+#endif
     for (int c = 0; c < sph->total_cells; c++) {
         sph->head[c] = -1;
     }
-    
+
     // 6. Create the Linked List
     // Do not parallelization!! Race Condition！
     // O(N), fast!
     for (int i = 0; i < sph->N; i++) {
         Particle *p = &sph->particles[i];
-        
+
         // make sure it is inside
         double x = fmax(0.0, fmin(p->x, sph->box_size_x - 1e-9));
         double y = fmax(0.0, fmin(p->y, sph->box_size_y - 1e-9));
-        
+
         // grid coordinate (cx, cy)
         int cx = (int)(x / sph->cell_size);
         int cy = (int)(y / sph->cell_size);
-        
+
         // 1D array index
         int cell_index = cx + cy * sph->num_cells_x;
-        
+
         // --- core Linked List insertion
         // 1. link the original head with i
-        sph->next[i] = sph->head[cell_index]; 
+        sph->next[i] = sph->head[cell_index];
         // 2. the head is now i
-        sph->head[cell_index] = i; 
+        sph->head[cell_index] = i;
     }
 }
 
-
 void build_cell_list_3d(SPHSystem *sph) {
+    // 1. Find the max h, for the safe grid size
     double max_h = 0.0;
 
 #ifdef _OPENMP
@@ -208,15 +211,25 @@ void build_cell_list_3d(SPHSystem *sph) {
         max_h = 1.0e-4;
     }
 
-    sph->cell_size = max_h;
+    // 2. Cell size (Restored logic for YZ-Periodic Boundary Alignment)
+    // 確保 Y 軸完美切分。若 box_size_y == box_size_z (常見的3D管狀設定)，Z 軸也會完美切分
+    int optimal_ny = (int)floor(sph->box_size_y / max_h);
+    if (optimal_ny < 1) optimal_ny = 1;
 
+    double safe_cell_size = sph->box_size_y / (double)optimal_ny;
+    sph->cell_size = safe_cell_size;
+
+    // 3. Number of cells
     sph->num_cells_x = (int)ceil(sph->box_size_x / sph->cell_size);
-    sph->num_cells_y = (int)ceil(sph->box_size_y / sph->cell_size);
-    sph->num_cells_z = (int)ceil(sph->box_size_z / sph->cell_size);
+    sph->num_cells_y = optimal_ny;
 
-    int new_total_cells =
-        sph->num_cells_x * sph->num_cells_y * sph->num_cells_z;
+    // 對 Z 軸使用 round 或強制轉型，確保在 box_size_y == box_size_z 時不會因為浮點數誤差多切一格
+    sph->num_cells_z = (int)round(sph->box_size_z / sph->cell_size);
+    if (sph->num_cells_z < 1) sph->num_cells_z = 1;
 
+    int new_total_cells = sph->num_cells_x * sph->num_cells_y * sph->num_cells_z;
+
+    // 4. Reallocate the length of the head array
     if (new_total_cells != sph->total_cells) {
         if (sph->head) {
             free(sph->head);
@@ -229,9 +242,16 @@ void build_cell_list_3d(SPHSystem *sph) {
             exit(EXIT_FAILURE);
         }
 
+// Restored GPU memory allocation for d_head
+#ifdef __CUDACC__
+        if (sph->d_head) cudaFree(sph->d_head);
+        cudaMalloc((void**)&sph->d_head, new_total_cells * sizeof(int));
+#endif
+
         sph->total_cells = new_total_cells;
     }
 
+    // 5. Initialize the head
 #ifdef _OPENMP
 #pragma omp parallel for schedule(static)
 #endif
@@ -239,7 +259,7 @@ void build_cell_list_3d(SPHSystem *sph) {
         sph->head[c] = -1;
     }
 
-    // Linked-list insertion: do not parallelize, otherwise race condition
+    // 6. Linked-list insertion: do not parallelize, otherwise race condition
     for (int i = 0; i < sph->N; i++) {
         Particle *p = &sph->particles[i];
 
@@ -251,9 +271,15 @@ void build_cell_list_3d(SPHSystem *sph) {
         int cy = (int)(y / sph->cell_size);
         int cz = (int)(z / sph->cell_size);
 
+        // 避免因為浮點數極限誤差導致 index 越界
+        if (cx >= sph->num_cells_x) cx = sph->num_cells_x - 1;
+        if (cy >= sph->num_cells_y) cy = sph->num_cells_y - 1;
+        if (cz >= sph->num_cells_z) cz = sph->num_cells_z - 1;
+
         int cell_index = cx + cy * sph->num_cells_x + cz * sph->num_cells_x * sph->num_cells_y;
 
         sph->next[i] = sph->head[cell_index];
         sph->head[cell_index] = i;
     }
 }
+

@@ -664,6 +664,10 @@ void compute_density_xreflective_yzperiodic_3d_celllist(SPHSystem *sph) {
         if (cz_i < 0) cz_i = 0;
         if (cz_i >= sph->num_cells_z) cz_i = sph->num_cells_z - 1;
 
+        // 在 3x3x3 迴圈外宣告一個小陣列，用來記錄已經搜尋過的 Cell
+        int checked_cells[27];
+        int num_checked = 0;
+
         // Search neighboring 27 cells
         for (int d_cz = -1; d_cz <= 1; d_cz++) {
             for (int d_cy = -1; d_cy <= 1; d_cy++) {
@@ -696,6 +700,22 @@ void compute_density_xreflective_yzperiodic_3d_celllist(SPHSystem *sph) {
                         cx
                         + cy * sph->num_cells_x
                         + cz * sph->num_cells_x * sph->num_cells_y;
+
+                    // ==================================================
+                    // 核心修復：防止 num_cells <= 2 時引發的雙重計算
+                    // ==================================================
+                    int already_checked = 0;
+                    for (int c = 0; c < num_checked; c++) {
+                        if (checked_cells[c] == cell_index) {
+                            already_checked = 1;
+                            break;
+                        }
+                    }
+                    if (already_checked) continue; // 如果搜過了，直接跳過
+
+                    // 記錄這個新網格
+                    checked_cells[num_checked++] = cell_index;
+                    // ==================================================
 
                     int j = sph->head[cell_index];
 

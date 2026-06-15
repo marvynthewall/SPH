@@ -145,7 +145,7 @@ int main(int argc, char *argv[])
     int step = 0;
     int output_step = 0;
 
-    double dt_output = 0.01;
+    double dt_output = 0.1;
     double next_output_time = 0.0;
 
     printf("\n初始化完成,開始 3D 模擬...\n");
@@ -160,6 +160,70 @@ int main(int argc, char *argv[])
 #endif
 
     while (t < t_end + dt_output) {
+        if (t > 0.1 && sph.dt < 1.0e-4) {
+              printf("\n======================================================\n");
+              printf("CRASH ALERT! dt collapsed to %e. Dumping anomalies...\n", sph.dt);
+              printf("======================================================\n");
+
+              int dump_count = 0;
+              int max_dump = 50; // 設定最大印出數量，防止洗版
+
+              for (int i = 0; i < sph.N; i++) {
+                  double vx = sph.particles[i].vx;
+                  double vy = sph.particles[i].vy;
+                  double vz = sph.particles[i].vz;
+                  double v_mag = sqrt(vx*vx + vy*vy + vz*vz);
+                  double rho = sph.particles[i].rho;
+
+                  // 設定異常門檻：速度超過 5.0 或 密度超過 2.0 (可依需求微調)
+                  if (v_mag > 5.0 || rho > 2.0) {
+                      printf("ID: %6d | Pos: (%7.3f, %7.3f, %7.3f) | Vel: %8.3f | Rho: %8.3f\n",
+                              i,
+                              sph.particles[i].x,
+                              sph.particles[i].y,
+                              sph.particles[i].z,
+                              v_mag,
+                              rho);
+                      dump_count++;
+                  }
+
+                  if (dump_count >= max_dump) {
+                      printf("... reached max dump limit (%d).\n", max_dump);
+                      break;
+                  }
+              }
+              printf("======================================================\n");
+              exit(1);
+          }
+        else if (t > 0.1){
+              int dump_count = 0;
+              int max_dump = 50; // 設定最大印出數量，防止洗版
+
+              for (int i = 0; i < sph.N; i++) {
+                  double vx = sph.particles[i].vx;
+                  double vy = sph.particles[i].vy;
+                  double vz = sph.particles[i].vz;
+                  double v_mag = sqrt(vx*vx + vy*vy + vz*vz);
+                  double rho = sph.particles[i].rho;
+
+                  // 設定異常門檻：速度超過 5.0 或 密度超過 2.0 (可依需求微調)
+                  if (v_mag > 5.0 || rho > 2.0) {
+                      printf("ID: %6d | Pos: (%7.3f, %7.3f, %7.3f) | Vel: %8.3f | Rho: %8.3f\n",
+                              i,
+                              sph.particles[i].x,
+                              sph.particles[i].y,
+                              sph.particles[i].z,
+                              v_mag,
+                              rho);
+                      dump_count++;
+                  }
+
+                  if (dump_count >= max_dump) {
+                      printf("... reached max dump limit (%d).\n", max_dump);
+                      break;
+                  }
+              }
+        }
 
         if (t >= next_output_time) {
 
