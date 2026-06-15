@@ -10,8 +10,8 @@ parser = argparse.ArgumentParser(description="Plot SPH simulation density distri
 # Add -f argument with a default value
 parser.add_argument("-f", "--filename", type=str, default="output_0000.csv", 
                     help="CSV filename to read (default: output_0000.csv)")
-parser.add_argument("-x", "--x", type=float, default=1.0, 
-                    help="size of x direction (default: 1.0)")
+parser.add_argument("-x", "--x", type=float, default=15.0, 
+                    help="size of x direction (default: 15.0)")
 
 # Parse arguments
 args = parser.parse_args()

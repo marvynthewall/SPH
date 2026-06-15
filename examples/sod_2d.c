@@ -185,7 +185,7 @@ int main(int argc, char *argv[]) {
     double t = 0.0;
     int step = 0;
     int output_step = 0;
-    double dt_output = 0.01;
+    double dt_output = 0.1;
     double next_output_time = 0.0;
 
 
