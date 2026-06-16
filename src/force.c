@@ -174,6 +174,10 @@ void compute_force_xreflective_yperiodic_celllist(SPHSystem *sph) {
         int cx_i = (int)(p_i->x / sph->cell_size);
         int cy_i = (int)(p_i->y / sph->cell_size);
 
+        // prevent double computation
+        int checked_cells[9];
+        int num_checked = 0;
+
         // --- 遍歷相鄰的 9 個網格 (包含自己所在的網格) ---
         for (int d_cy = -1; d_cy <= 1; d_cy++) {
             for (int d_cx = -1; d_cx <= 1; d_cx++) {
@@ -189,6 +193,20 @@ void compute_force_xreflective_yperiodic_celllist(SPHSystem *sph) {
                 if (cx < 0 || cx >= sph->num_cells_x) continue;
 
                 int cell_index = cx + cy * sph->num_cells_x;
+
+                // 新增：檢查是否已經搜尋過這個網格
+                int already_checked = 0;
+                for (int c = 0; c < num_checked; c++) {
+                    if (checked_cells[c] == cell_index) {
+                        already_checked = 1;
+                        break;
+                    }
+                }
+                if (already_checked) continue; // 如果搜過了，直接換下一個方向
+
+                // 記錄這個新網格
+                checked_cells[num_checked++] = cell_index;
+
                 int j = sph->head[cell_index];
 
                 // --- 走訪該網格內的 Linked List ---
@@ -395,6 +413,9 @@ void compute_force_xperiodic_yperiodic_celllist(SPHSystem *sph) {
         int cx_i = (int)(p_i->x / sph->cell_size);
         int cy_i = (int)(p_i->y / sph->cell_size);
 
+        // prevent double computation
+        int checked_cells[9];
+        int num_checked = 0;
         // Search 3x3 surrounding cells
         for (int d_cy = -1; d_cy <= 1; d_cy++) {
             for (int d_cx = -1; d_cx <= 1; d_cx++) {
@@ -411,6 +432,20 @@ void compute_force_xperiodic_yperiodic_celllist(SPHSystem *sph) {
                 else if (cy >= sph->num_cells_y) cy -= sph->num_cells_y;
 
                 int cell_index = cx + cy * sph->num_cells_x;
+
+                // 新增：檢查是否已經搜尋過這個網格
+                int already_checked = 0;
+                for (int c = 0; c < num_checked; c++) {
+                    if (checked_cells[c] == cell_index) {
+                        already_checked = 1;
+                        break;
+                    }
+                }
+                if (already_checked) continue; // 如果搜過了，直接換下一個方向
+
+                // 記錄這個新網格
+                checked_cells[num_checked++] = cell_index;
+
                 int j = sph->head[cell_index];
 
                 // Traverse the linked list in the target cell
@@ -786,33 +821,207 @@ void compute_force_xreflective_yperiodic_zperiodic_3d(SPHSystem *sph)
 }
 
 
+void compute_force_xreflective_yzperiodic_3d_celllist(SPHSystem *sph) {
 
-
-void compute_force_xreflective_yzperiodic_3d_celllist(SPHSystem *sph)
-{
-    /*
-     * Precondition:
-     * build_cell_list_3d(sph) should already be called before this function.
-     *
-     * In your integrator, this is usually done inside:
-     * compute_density_xreflective_yzperiodic_3d_celllist(sph)
-     *
-     * If you want this force function to be fully independent,
-     * you can uncomment the following line:
-     *
-     * build_cell_list_3d(sph);
-     */
+    // 確保 Cell List 已經建立
+    // build_cell_list_3d(sph);
 
 #ifdef _OPENMP
-#pragma omp parallel for schedule(static)
+#pragma omp parallel for schedule(dynamic)
 #endif
     for (int i = 0; i < sph->N; i++) {
-        sph->particles[i].ax = 0.0;
-        sph->particles[i].ay = 0.0;
-        sph->particles[i].az = 0.0;
-        sph->particles[i].dudt = 0.0;
+        Particle *p_i = &sph->particles[i];
+
+        // 初始化加速度與能量變化率
+        p_i->ax = 0.0;
+        p_i->ay = 0.0;
+        p_i->az = 0.0;
+        p_i->dudt = 0.0;
+
+        int cx_i = (int)(p_i->x / sph->cell_size);
+        int cy_i = (int)(p_i->y / sph->cell_size);
+        int cz_i = (int)(p_i->z / sph->cell_size);
+
+        if (cx_i < 0) cx_i = 0;
+        if (cx_i >= sph->num_cells_x) cx_i = sph->num_cells_x - 1;
+        if (cy_i < 0) cy_i = 0;
+        if (cy_i >= sph->num_cells_y) cy_i = sph->num_cells_y - 1;
+        if (cz_i < 0) cz_i = 0;
+        if (cz_i >= sph->num_cells_z) cz_i = sph->num_cells_z - 1;
+
+        int checked_cells[27];
+        int num_checked = 0;
+
+        for (int d_cz = -1; d_cz <= 1; d_cz++) {
+            for (int d_cy = -1; d_cy <= 1; d_cy++) {
+                for (int d_cx = -1; d_cx <= 1; d_cx++) {
+
+                    int cx = cx_i + d_cx;
+                    int cy = cy_i + d_cy;
+                    int cz = cz_i + d_cz;
+
+                    if (cy < 0) cy += sph->num_cells_y;
+                    else if (cy >= sph->num_cells_y) cy -= sph->num_cells_y;
+
+                    if (cz < 0) cz += sph->num_cells_z;
+                    else if (cz >= sph->num_cells_z) cz -= sph->num_cells_z;
+
+                    if (cx < 0 || cx >= sph->num_cells_x) continue;
+
+                    int cell_index = cx + cy * sph->num_cells_x + cz * sph->num_cells_x * sph->num_cells_y;
+
+                    // 防止雙重計算
+                    int already_checked = 0;
+                    for (int c = 0; c < num_checked; c++) {
+                        if (checked_cells[c] == cell_index) {
+                            already_checked = 1;
+                            break;
+                        }
+                    }
+                    if (already_checked) continue;
+                    checked_cells[num_checked++] = cell_index;
+
+                    int j = sph->head[cell_index];
+
+                    while (j != -1) {
+                        if (i == j) { // 受力計算必須排除自己！
+                            j = sph->next[j];
+                            continue;
+                        }
+
+                        Particle *p_j = &sph->particles[j];
+
+                        double dy = p_i->y - p_j->y;
+                        double dz = p_i->z - p_j->z;
+
+                        // Y & Z Minimum Image Convention
+                        if (dy > 0.5 * sph->box_size_y) dy -= sph->box_size_y;
+                        else if (dy < -0.5 * sph->box_size_y) dy += sph->box_size_y;
+
+                        if (dz > 0.5 * sph->box_size_z) dz -= sph->box_size_z;
+                        else if (dz < -0.5 * sph->box_size_z) dz += sph->box_size_z;
+
+                        // 平均平滑長度 (解決粒子穿透的關鍵)
+                        double h_ij = 0.5 * (p_i->h + p_j->h);
+
+                        // ==================================================
+                        // 1. 真實粒子交互作用
+                        // ==================================================
+                        double dx = p_i->x - p_j->x;
+                        double r = sqrt(dx*dx + dy*dy + dz*dz);
+
+                        if (r > 1.0e-12 && r <= h_ij) {
+                            double W, dWdr, dWdh;
+                            cubic_spline_kernel_3d(r, h_ij, &W, &dWdr, &dWdh);
+
+                            double dvx = p_i->vx - p_j->vx;
+                            double dvy = p_i->vy - p_j->vy;
+                            double dvz = p_i->vz - p_j->vz;
+                            double v_dot_r = dvx*dx + dvy*dy + dvz*dz;
+
+                            double PI_ij = 0.0;
+                            if (v_dot_r < 0.0) {
+                                double mu_ij = (h_ij * v_dot_r) / (r*r + sph->epsilon * h_ij*h_ij);
+                                double c_ij = 0.5 * (p_i->cs + p_j->cs);
+                                double rho_ij = 0.5 * (p_i->rho + p_j->rho);
+                                PI_ij = (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
+                            }
+
+                            double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho);
+                            double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho);
+                            
+                            // 總力 = 壓力 + 人工黏滯力
+                            double force_mag = -p_j->mass * (term_i + term_j + PI_ij) * dWdr;
+
+                            p_i->ax += force_mag * (dx / r);
+                            p_i->ay += force_mag * (dy / r);
+                            p_i->az += force_mag * (dz / r);
+
+                            // 內能變化率 (對稱形式)
+                            double v_dot_gradW = (v_dot_r / r) * dWdr;
+                            p_i->dudt += 0.5 * p_j->mass * (term_i + term_j + PI_ij) * v_dot_gradW;
+                        }
+
+                        // ==================================================
+                        // 2. 左側反射牆鏡像 (x = 0)
+                        // ==================================================
+                        if (p_i->x < h_ij) {
+                            double dx_L = p_i->x - (-p_j->x); // x_ghost = -x_j
+                            double r_L = sqrt(dx_L*dx_L + dy*dy + dz*dz);
+                            
+                            if (r_L > 1.0e-12 && r_L <= h_ij) {
+                                double W, dWdr, dWdh;
+                                cubic_spline_kernel_3d(r_L, h_ij, &W, &dWdr, &dWdh);
+
+                                // 鏡像粒子的速度反轉 vx_ghost = -vx_j
+                                double dvx_L = p_i->vx - (-p_j->vx);
+                                double dvy_L = p_i->vy - p_j->vy;
+                                double dvz_L = p_i->vz - p_j->vz;
+                                double v_dot_r_L = dvx_L*dx_L + dvy_L*dy + dvz_L*dz;
+
+                                double PI_ij = 0.0;
+                                if (v_dot_r_L < 0.0) {
+                                    double mu_ij = (h_ij * v_dot_r_L) / (r_L*r_L + sph->epsilon * h_ij*h_ij);
+                                    double c_ij = 0.5 * (p_i->cs + p_j->cs);
+                                    double rho_ij = 0.5 * (p_i->rho + p_j->rho);
+                                    PI_ij = (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
+                                }
+
+                                double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho);
+                                double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho);
+                                double force_mag = -p_j->mass * (term_i + term_j + PI_ij) * dWdr;
+
+                                p_i->ax += force_mag * (dx_L / r_L);
+                                p_i->ay += force_mag * (dy / r_L);
+                                p_i->az += force_mag * (dz / r_L);
+                                p_i->dudt += 0.5 * p_j->mass * (term_i + term_j + PI_ij) * ((v_dot_r_L / r_L) * dWdr);
+                            }
+                        }
+
+                        // ==================================================
+                        // 3. 右側反射牆鏡像 (x = box_size_x)
+                        // ==================================================
+                        if (p_i->x > sph->box_size_x - h_ij) {
+                            double dx_R = p_i->x - (2.0 * sph->box_size_x - p_j->x);
+                            double r_R = sqrt(dx_R*dx_R + dy*dy + dz*dz);
+                            
+                            if (r_R > 1.0e-12 && r_R <= h_ij) {
+                                double W, dWdr, dWdh;
+                                cubic_spline_kernel_3d(r_R, h_ij, &W, &dWdr, &dWdh);
+
+                                double dvx_R = p_i->vx - (-p_j->vx);
+                                double dvy_R = p_i->vy - p_j->vy;
+                                double dvz_R = p_i->vz - p_j->vz;
+                                double v_dot_r_R = dvx_R*dx_R + dvy_R*dy + dvz_R*dz;
+
+                                double PI_ij = 0.0;
+                                if (v_dot_r_R < 0.0) {
+                                    double mu_ij = (h_ij * v_dot_r_R) / (r_R*r_R + sph->epsilon * h_ij*h_ij);
+                                    double c_ij = 0.5 * (p_i->cs + p_j->cs);
+                                    double rho_ij = 0.5 * (p_i->rho + p_j->rho);
+                                    PI_ij = (-sph->alpha * c_ij * mu_ij + sph->beta * mu_ij * mu_ij) / rho_ij;
+                                }
+
+                                double term_i = p_i->factor * p_i->pressure / (p_i->rho * p_i->rho);
+                                double term_j = p_j->factor * p_j->pressure / (p_j->rho * p_j->rho);
+                                double force_mag = -p_j->mass * (term_i + term_j + PI_ij) * dWdr;
+
+                                p_i->ax += force_mag * (dx_R / r_R);
+                                p_i->ay += force_mag * (dy / r_R);
+                                p_i->az += force_mag * (dz / r_R);
+                                p_i->dudt += 0.5 * p_j->mass * (term_i + term_j + PI_ij) * ((v_dot_r_R / r_R) * dWdr);
+                            }
+                        }
+
+                        j = sph->next[j];
+                    }
+                }
+            }
+        }
     }
 }
+
+
 __attribute__((always_inline)) static inline void compute_pairwise_physics_1d( Particle *p_i, Particle *p_j, SPHSystem *sph) {
   double dx = p_i->x - p_j->x;
   double r = fabs(dx);
@@ -896,6 +1105,10 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
         if (cz_i < 0) cz_i = 0;
         if (cz_i >= sph->num_cells_z) cz_i = sph->num_cells_z - 1;
 
+
+        // 在 3x3x3 迴圈外宣告一個小陣列，用來記錄已經搜尋過的 Cell
+        int checked_cells[27];
+        int num_checked = 0;
         /*
          * Search 27 neighboring cells:
          * dx direction: reflective wall, skip outside cells
@@ -932,6 +1145,22 @@ void compute_force_1d_xreflective(SPHSystem *sph) {
                         cx
                       + cy * sph->num_cells_x
                       + cz * sph->num_cells_x * sph->num_cells_y;
+
+                    // ==================================================
+                    // 核心修復：防止 num_cells <= 2 時引發的雙重計算
+                    // ==================================================
+                    int already_checked = 0;
+                    for (int c = 0; c < num_checked; c++) {
+                        if (checked_cells[c] == cell_index) {
+                            already_checked = 1;
+                            break;
+                        }
+                    }
+                    if (already_checked) continue; // 如果搜過了，直接跳過
+
+                    // 記錄這個新網格
+                    checked_cells[num_checked++] = cell_index;
+                    // ==================================================
 
                     int j = sph->head[cell_index];
 

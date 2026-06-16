@@ -12,8 +12,8 @@ parser.add_argument("-d", "--dir", type=str, required=True,
                     help="Target directory containing output_*.csv files")
 parser.add_argument("-o", "--outputfilename", type=str, default="sod_animation", 
                     help="Output filename without extension (default: sod_animation)")
-parser.add_argument("-x", "--x_lim", type=float, default=5.0, 
-                    help="Size of x direction limit (default: 5.0)")
+parser.add_argument("-x", "--x_lim", type=float, default=15.0, 
+                    help="Size of x direction limit (default: 15.0)")
 parser.add_argument("-f", "--format", type=str, default="mp4", 
                     help="File format, mp4 or gif (default: mp4)")
 args = parser.parse_args()

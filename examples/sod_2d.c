@@ -21,7 +21,7 @@ int main(int argc, char *argv[]) {
     const char *x_c = "15.0";
     double t_end = 4.0;
     const char *t_c = "4.0";
-    const char *output_format = "bin";
+    const char *output_format = "csv";
 #ifndef __CUDACC__
     int num_threads = 0;
 #endif
@@ -49,8 +49,8 @@ int main(int argc, char *argv[]) {
                 output_format = "bin";
             } else {
                 // 防呆機制：如果使用者亂打（例如 -f txt），給個警告並強制用預設值
-                fprintf(stderr, "Warning: unknown output format '%s'. Defaulting to 'bin'.\n", argv[i + 1]);
-                output_format = "bin";
+                fprintf(stderr, "Warning: unknown output format '%s'. Defaulting to 'csv'.\n", argv[i + 1]);
+                output_format = "csv";
             }
             i++; // 跳過下一個參數（也就是那個 "bin" 或 "csv"）
         }

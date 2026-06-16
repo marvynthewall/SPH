@@ -101,7 +101,7 @@ if __name__ == "__main__":
     axs[2].plot(x_exact, P_exact, 'k-', lw=2, label="Exact")
 
     # Helper function to plot
-    def plot_data(df, label, color, marker, ls='', alpha=1.0):
+    def plot_data(df, label, color, marker, ls='', alpha=1.0, s=2):
         # Calculate exact solution at the locations in df["x"]
         rho_ex, u_ex, P_ex = get_sod_exact(df["x"].values, args.time, x0=args.xmax/2.0)
         
@@ -120,16 +120,16 @@ if __name__ == "__main__":
             axs[1].plot(df["x"], df["vx"], color=color, marker=marker, ls='-', ms=3, alpha=alpha, label=lbl_u)
             axs[2].plot(df["x"], df["P"], color=color, marker=marker, ls='-', ms=3, alpha=alpha, label=lbl_P)
         else:
-            axs[0].scatter(df["x"], df["rho"], color=color, s=2, alpha=alpha, label=lbl_rho)
-            axs[1].scatter(df["x"], df["vx"], color=color, s=2, alpha=alpha, label=lbl_u)
+            axs[0].scatter(df["x"], df["rho"], color=color, s=s, alpha=alpha, label=lbl_rho)
+            axs[1].scatter(df["x"], df["vx"], color=color, s=s, alpha=alpha, label=lbl_u)
             if p_col in df.columns:
-                axs[2].scatter(df["x"], df[p_col], color=color, s=2, alpha=alpha, label=lbl_P)
+                axs[2].scatter(df["x"], df[p_col], color=color, s=s, alpha=alpha, label=lbl_P)
 
     # 2. Grid Solver
     grid_f = get_file(args.grid_dir)
     if os.path.exists(grid_f):
         df_grid = pd.read_csv(grid_f)
-        plot_data(df_grid, "Grid (HLLC)", "blue", "o", alpha=0.7)
+        plot_data(df_grid, "Grid (HLLC)", "blue", ".", alpha=0.5)
     
     # 3. 1D SPH
     sph1d_f = get_file(args.sph1d_dir)
@@ -146,7 +146,7 @@ if __name__ == "__main__":
         y_mid = df_2d["y"].max() / 2.0
         df_2d_slice = df_2d[(df_2d["y"] > y_mid - 0.05) & (df_2d["y"] < y_mid + 0.05)]
         if len(df_2d_slice) == 0: df_2d_slice = df_2d # fallback
-        plot_data(df_2d_slice, "SPH 2D", "green", ".", alpha=0.3)
+        plot_data(df_2d_slice, "SPH 2D", "green", ".", s=3, alpha=0.3)
 
     # 5. 3D SPH
     sph3d_f = get_file(args.sph3d_dir)

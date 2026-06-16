@@ -83,6 +83,7 @@ double compute_timestep_signal_velocity(SPHSystem *sph) {
 
         if (h_i > 0.0 && vmax_i > 0.0) {
             double dt_i = cfl * h_i / vmax_i;
+            if(dt_i > 0.01)dt_i = 0.01;
             dt_min = (dt_i < dt_min) ? dt_i : dt_min;
         }
     }

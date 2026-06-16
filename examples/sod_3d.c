@@ -160,7 +160,6 @@ int main(int argc, char *argv[])
 #endif
 
     while (t < t_end + dt_output) {
-
         if (t >= next_output_time) {
 
             printf("output_time: %.4f\n", t);
@@ -186,7 +185,8 @@ int main(int argc, char *argv[])
             }
 
             output_step++;
-            next_output_time += dt_output;
+            while(next_output_time < t)
+                next_output_time += dt_output;
 
             if (t >= t_end) {
                 break;

@@ -93,6 +93,9 @@ __global__ void compute_density_xreflective_yperiodic_celllist_kernel(
     int cx_i = (int)(p_i.x / cell_size);
     int cy_i = (int)(p_i.y / cell_size);
 
+    int checked_cells[9];
+    int num_checked = 0;
+
     // find the 9 cells surrounding
     for(int d_cy = -1; d_cy<=1; d_cy++){
         for(int d_cx = -1; d_cx <= 1; d_cx ++){
@@ -110,6 +113,18 @@ __global__ void compute_density_xreflective_yperiodic_celllist_kernel(
             if (cx<0 || cx >= num_cells_x)continue;
 
             int cell_index = cx + cy * num_cells_x;
+
+            // avoid recompute
+            int already_checked = 0;
+            for (int c = 0; c < num_checked; c++) {
+                if (checked_cells[c] == cell_index) {
+                    already_checked = 1;
+                    break;
+                }
+            }
+            if (already_checked) continue;
+
+            checked_cells[num_checked++] = cell_index; 
 
             // TODO d_head ? d_next?
             int j = d_head[cell_index];

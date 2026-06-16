@@ -9,7 +9,11 @@ int main(void) {
   printf("   1D Grid Sod Shock Tube         \n");
   printf("====================================\n");
 
-  int nx = 474; // Resolution matching 2D SPH dx = 0.0316
+  // Resolution matching 2D SPH dx = 0.0316
+  // int nx = 474;
+  // int nx = 1500;
+  // int nx = 4740;
+  int nx = 15000;
   int ny = 1;
   int ng = 1; // 1 ghost cell for 1st order Godunov
 
