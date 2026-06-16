@@ -62,9 +62,11 @@ for col in required_cols:
     if col not in df.columns:
         raise ValueError(f"CSV file missing required column: {col}")
 
-# 4. 建立 3D figure
-fig = plt.figure(figsize=(10, 6))
-ax = fig.add_subplot(111, projection="3d")
+# 4. 建立 3D figure - 將畫布比例調得更扁（12x3），逼迫長條形震波管展開
+fig = plt.figure(figsize=(20, 10))
+
+# 讓 3D 繪圖軸極致外擴，上下左右甚至故意超出畫布（溢出），直接剪裁掉 3D 引擎自帶的死白邊
+ax = fig.add_axes([-0.18, -0.25, 1.36, 1.45], projection="3d")
 
 sc = ax.scatter(
     df["x"],
@@ -73,13 +75,27 @@ sc = ax.scatter(
     c=df["rho"],
     s=args.point_size,
     cmap="viridis",
-    vmin=args.rho_min,
-    vmax=args.rho_max,
+    vmin=0.0,
+    vmax=1.0,
     depthshade=True
 )
 
-cbar = fig.colorbar(sc, ax=ax, pad=0.1)
-cbar.set_label("Density")
+# 🌟 終極特技 1：改用「正交投影」
+# 消除透視造成的遠小近大，讓 15 單位長的 X 軸以完全均勻的比例橫跨螢幕
+ax.set_proj_type('ortho')
+
+# 🌟 終極特技 2：強力鏡頭拉近（放大三倍）
+# Matplotlib 3.6+ 支援 set_zoom()。設為 2.8 ~ 3.0 可以直接把本體放大三倍！
+# 為了相容舊版本，若不支援則自動 fallback 到修改相機距離 ax.dist（數字越小鏡頭越近，預設為 10）
+try:
+    ax.set_zoom(2.9)
+except AttributeError:
+    ax.dist = 3.5
+
+# 🌟 Colorbar 絕對定位：水平放置於左下角，高度與邊距依新的畫布比例微調
+cax = fig.add_axes([0.05, 0.08, 0.20, 0.05]) 
+cbar = fig.colorbar(sc, cax=cax, orientation="horizontal")
+cbar.set_label("Density", labelpad=5)
 
 ax.set_xlabel("x")
 ax.set_ylabel("y")
@@ -89,13 +105,14 @@ ax.set_xlim(0, args.x_lim)
 ax.set_ylim(0, args.y_lim)
 ax.set_zlim(0, args.z_lim)
 
-# 讓 3D box 比例正確
+# 讓 3D box 比例正確 (15:1:1)
 ax.set_box_aspect((args.x_lim, args.y_lim, args.z_lim))
 
+# 🌟 全域標題置頂防切：y 軸鎖定在 0.95 確保大圖時字體清晰完整
 first_filename = os.path.basename(files[0])
-title = ax.set_title(f"SPH 3D Sod Shock Tube - {first_filename}")
+title = fig.suptitle(f"SPH 3D Sod Shock Tube - {first_filename}", y=0.95, fontsize=12)
 
-# 視角，可自行調整
+# 視角調整：維持你習慣的角度
 ax.view_init(elev=20, azim=-60)
 
 # 5. 更新動畫
