@@ -11,7 +11,7 @@ int main(void) {
 
   int nx = 128; // Resolution
   int ny = 128;
-  int ng = 1; // 1 ghost cell for 1st order Godunov
+  int ng = 2; // 1 ghost cell for 1st order Godunov
 
   double xmin = 0.0, xmax = 1.0;
   double ymin = 0.0, ymax = 1.0;
