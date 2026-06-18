@@ -1,4 +1,8 @@
 #include "sph_all.h"
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
 
 int main(int argc, char *argv[]) {
   printf("====================================\n");
@@ -29,7 +33,7 @@ int main(int argc, char *argv[]) {
   }
 
   SPHSystem sph;
-  
+
   // Initialize Kelvin-Helmholtz instability setup
   init_KH(&sph, nx, ny);
 
@@ -67,7 +71,9 @@ int main(int argc, char *argv[]) {
 
     // integrate one step using fully periodic boundary conditions
     double dt = step_leapfrog_kdk_xperiodic_yperiodic(
-        &sph, compute_timestep_signal_velocity, compute_force_xperiodic_yperiodic_celllist);
+        &sph, compute_timestep_signal_velocity,
+        compute_force_xperiodic_yperiodic_celllist); // apply cell list
+                                                     // optimization
     t += dt;
     step++;
   }

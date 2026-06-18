@@ -4,16 +4,36 @@
 #include "../include/hydro.h"
 #include <sys/time.h>
 
-int main(void) {
+#include <string.h>
+#include <errno.h>
+#include <sys/stat.h>
+
+int main(int argc, char *argv[]) {
   printf("====================================\n");
   printf("   1D Grid Sod Shock Tube         \n");
   printf("====================================\n");
 
-  // Resolution matching 2D SPH dx = 0.0316
-  // int nx = 474;
-  // int nx = 1500;
-  // int nx = 4740;
   int nx = 15000;
+  char output_folder[128] = "grid_sod_output";
+
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "-n") == 0 && i + 1 < argc) {
+      nx = atoi(argv[i + 1]);
+      i++;
+    } else if (strcmp(argv[i], "-o") == 0 && i + 1 < argc) {
+      strncpy(output_folder, argv[i + 1], sizeof(output_folder) - 1);
+      output_folder[sizeof(output_folder) - 1] = '\0';
+      i++;
+    }
+  }
+
+  if (mkdir(output_folder, 0777) == -1) {
+    if (errno != EEXIST) {
+      printf("Error: Could not create directory %s\n", output_folder);
+      return 1;
+    }
+  }
+
   int ny = 1;
   int ng = 1; // 1 ghost cell for 1st order Godunov
 
@@ -38,8 +58,8 @@ int main(void) {
 
   while (grid.t < grid.t_end) {
     if (grid.t >= next_output_t) {
-      char filename[128];
-      sprintf(filename, "grid_sod_2d_output/output_%04d.csv", output_step++);
+      char filename[256];
+      sprintf(filename, "%s/output_%04d.csv", output_folder, output_step++);
       write_csv(&grid, filename);
       next_output_t += output_dt;
     }
@@ -57,8 +77,8 @@ int main(void) {
   }
 
   // Final output
-  char filename[128];
-  sprintf(filename, "grid_sod_2d_output/output_%04d.csv", output_step);
+  char filename[256];
+  sprintf(filename, "%s/output_%04d.csv", output_folder, output_step);
   write_csv(&grid, filename);
 
   gettimeofday(&end, NULL);

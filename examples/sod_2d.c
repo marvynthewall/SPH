@@ -22,6 +22,7 @@ int main(int argc, char *argv[]) {
     double t_end = 4.0;
     const char *t_c = "4.0";
     const char *output_format = "csv";
+    int use_celllist = 1; // Default to using cell-list
 #ifndef __CUDACC__
     int num_threads = 0;
 #endif
@@ -62,6 +63,9 @@ int main(int argc, char *argv[]) {
 
             custom_folder_set = 1; // 標記使用者有指定資料夾
             i++;
+        }
+        else if (strcmp(argv[i], "-nocell") == 0) {
+            use_celllist = 0;
         }
 #ifndef __CUDACC__
         // 新增：處理 -th 參數
@@ -172,13 +176,24 @@ int main(int argc, char *argv[]) {
 #ifdef __CUDACC__
     copy_particles_H2D(&sph); 
 
-    compute_density_xreflective_yperiodic_celllist_gpu(&sph);
-    compute_pressure_soundspeed_factor_gpu(&sph);
-    compute_force_xreflective_yperiodic_celllist_gpu(&sph);
+    if (use_celllist) {
+        compute_density_xreflective_yperiodic_celllist_gpu(&sph);
+        compute_pressure_soundspeed_factor_gpu(&sph);
+        compute_force_xreflective_yperiodic_celllist_gpu(&sph);
+    } else {
+        printf("Error: GPU non-celllist is not supported.\n");
+        exit(1);
+    }
 #else
-    compute_density_xreflective_yperiodic_celllist(&sph);
-    compute_pressure_soundspeed_factor(&sph);
-    compute_force_xreflective_yperiodic_celllist(&sph);
+    if (use_celllist) {
+        compute_density_xreflective_yperiodic_celllist(&sph);
+        compute_pressure_soundspeed_factor(&sph);
+        compute_force_xreflective_yperiodic_celllist(&sph);
+    } else {
+        compute_density_xreflective_yperiodic(&sph);
+        compute_pressure_soundspeed_factor(&sph);
+        compute_force_xreflective_yperiodic(&sph);
+    }
 #endif
 
 
@@ -234,8 +249,14 @@ int main(int argc, char *argv[]) {
         double dt = step_leapfrog_kdk_xreflective_yperiodic_gpu(
                 &sph, compute_timestep_signal_velocity_gpu, compute_force_xreflective_yperiodic_celllist_gpu);
 #else
-        double dt = step_leapfrog_kdk_xreflective_yperiodic(
-                &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic_celllist);
+        double dt;
+        if (use_celllist) {
+            dt = step_leapfrog_kdk_xreflective_yperiodic(
+                    &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic_celllist);
+        } else {
+            dt = step_leapfrog_kdk_xreflective_yperiodic(
+                    &sph, compute_timestep_signal_velocity, compute_force_xreflective_yperiodic);
+        }
 #endif
         t += dt;
         step++;
