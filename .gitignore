@@ -2,6 +2,7 @@
 bin/*
 !bin/.gitkeep
 build/
+benchmark_logs/
 wrong/
 video/
 tests/test_density
