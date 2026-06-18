@@ -83,7 +83,7 @@ double compute_timestep_signal_velocity(SPHSystem *sph) {
 
         if (h_i > 0.0 && vmax_i > 0.0) {
             double dt_i = cfl * h_i / vmax_i;
-            if(dt_i > 0.01)dt_i = 0.01;
+            //if(dt_i > 0.01)dt_i = 0.01;
             dt_min = (dt_i < dt_min) ? dt_i : dt_min;
         }
     }
@@ -535,8 +535,7 @@ double step_leapfrog_kdk_xreflective_yperiodic(
     double dt54 = (t5.tv_sec-t4.tv_sec) + (t5.tv_usec-t4.tv_usec) / 1000000.0;
     double dt65 = (t6.tv_sec-t5.tv_sec) + (t6.tv_usec-t5.tv_usec) / 1000000.0;
     double dt76 = (t7.tv_sec-t6.tv_sec) + (t7.tv_usec-t6.tv_usec) / 1000000.0;
-    printf("Kick/Drift: %f s | Adapt H: %f s | Density: %f s | Pressure: %f s | Force: %f s | Kick: %f s\n", 
-            dt21, dt32, dt43, dt54, dt65, dt76);
+    printf("Kick/Drift: %f s | Adapt H: %f s | Density: %f s | Pressure: %f s | Force: %f s | Kick: %f s\n", dt21, dt32, dt43, dt54, dt65, dt76);
 #endif
     return dt;
 }

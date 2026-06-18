@@ -2,7 +2,7 @@
 bin/*
 !bin/.gitkeep
 build/
-benchmark_logs/
+benchmark*
 wrong/
 video/
 tests/test_density
@@ -20,3 +20,4 @@ tests/test_integrator
 __pycache__/
 *.o
 grid_solver/bin/*
+*easy_plot*

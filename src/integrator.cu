@@ -84,7 +84,7 @@ __global__ void compute_timestep_kernel(
     // 計算該粒子的 dt，並用原子操作寫入全域最小值
     if (p_i.h > 0.0 && vmax_i > 0.0) {
         double dt_i = cfl * p_i.h / vmax_i;
-        if(dt_i>0.01)dt_i=0.01;
+        // if(dt_i>0.01)dt_i=0.01;
         atomicMin_double(d_dt_min, dt_i);
     }
 }
