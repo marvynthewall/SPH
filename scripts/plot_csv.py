@@ -10,13 +10,18 @@ parser = argparse.ArgumentParser(description="Plot SPH simulation density distri
 
 # Add arguments
 parser.add_argument("-f", "--filename", type=str, default="output_0000.csv",
-                    help="CSV filename to read (default: output_0000.csv)")
+                    help="CSV filename to read")
+parser.add_argument("-o", "--outputfile", type=str, default="default",
+                    help="outputfile")
 parser.add_argument("-x", "--x", type=float, default=15.0,
                     help="size of x direction (default: 15.0)")
 
 # 新增參數：決定是否要畫 h circles (預設為不畫，加上 -c 或 --circle 才會畫)
 parser.add_argument("-c", "--circle", action="store_true", 
                     help="Draw smoothing length (h) circles (Warning: may be slow for large datasets)")
+# 新增參數：決定是否要畫 h circles (預設為不畫，加上 -c 或 --circle 才會畫)
+parser.add_argument("-n", "--nobar", action="store_true", 
+                    help="no colorbar")
 
 # Parse arguments
 args = parser.parse_args()
@@ -46,10 +51,12 @@ else:
 # 2. Draw particle center points
 # ---------------------------------------------------------
 print(f"[{time.strftime('%H:%M:%S')}] Setting up scatter plot...")
-sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=0.2, zorder=2, cmap='viridis')
+# sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=0.2, zorder=2, cmap='viridis')
+sc = ax.scatter(df["x"], df["y"], c=df["rho"], s=0.2, zorder=2, cmap='viridis', vmin=0.0, vmax=1.0)
 
 # Add colorbar and labels
-fig.colorbar(sc, ax=ax, label="density")
+if not args.nobar:
+    fig.colorbar(sc, ax=ax, label="density")
 ax.set_xlabel("x")
 ax.set_ylabel("y")
 ax.set_aspect("equal")
@@ -62,7 +69,10 @@ ax.set_ylim(0.0, 1.0)
 title_str = f"SPH Density & Smoothing Length: {args.filename}" if args.circle else f"SPH Density: {args.filename}"
 plt.title(title_str)
 
+
 output_png = args.filename.replace(".csv", ".png")
+if args.outputfile != "default":
+    output_png = args.outputfile
 
 # 提示使用者正在進行最耗時的渲染步驟
 print(f"[{time.strftime('%H:%M:%S')}] Rendering and saving plot to {output_png}...")
