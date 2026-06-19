@@ -21,6 +21,7 @@ int main(int argc, char *argv[]) {
     const char *x_c = "15.0";
     double t_end = 4.0;
     const char *t_c = "4.0";
+    double dt_input = -1.0;
     const char *output_format = "csv";
     int use_celllist = 1; // Default to using cell-list
 #ifndef __CUDACC__
@@ -40,6 +41,10 @@ int main(int argc, char *argv[]) {
         else if (strcmp(argv[i], "-t") == 0 && i + 1 < argc) {
             t_c = argv[i+1];
             t_end = atof(argv[i + 1]); 
+            i++;                      
+        }
+        else if (strcmp(argv[i], "-dt") == 0 && i + 1 < argc) {
+            dt_input= atof(argv[i + 1]); 
             i++;                      
         }
         else if (strcmp(argv[i], "-f") == 0 && i + 1 < argc) {
@@ -201,6 +206,8 @@ int main(int argc, char *argv[]) {
     int step = 0;
     int output_step = 0;
     double dt_output = 0.01;
+    if(dt_input >0.0)
+        dt_output = dt_input;
     double next_output_time = 0.0;
 
 
@@ -210,7 +217,7 @@ int main(int argc, char *argv[]) {
     auto prev_time_gpu = init_time_gpu;
 #elif defined(_OPENMP)
     init_time = omp_get_wtime() - start_time_omp;
-    prev_step_time = init_time;
+    prev_step_time = omp_get_wtime();
 #else
     gettimeofday(&run_t_init, NULL);
     init_time = (run_t_init.tv_sec - run_t_start.tv_sec) + (run_t_init.tv_usec - run_t_start.tv_usec) / 1000000.0;
@@ -274,7 +281,7 @@ int main(int argc, char *argv[]) {
         step_time = (run_t_new.tv_sec - run_t_old.tv_sec) + (run_t_new.tv_usec - run_t_old.tv_usec) / 1000000.0;
         run_t_old = run_t_new;
 #endif
-        printf("sod t:%.10f, dt: %.10f, step simulation time: %f\n", t, dt, step_time);
+        printf("step: %d, sod t:%.10f, dt: %.10f, step simulation time: %f\n", step, t, dt, step_time);
     }
 
     double elapsed_time = 0.0;

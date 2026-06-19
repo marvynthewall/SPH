@@ -2,6 +2,7 @@
 bin/*
 !bin/.gitkeep
 build/
+benchmark*
 wrong/
 video/
 tests/test_density
@@ -11,6 +12,7 @@ tests/test_kernel
 tests/test_integrator
 *.csv
 *.png
+*.jpeg
 *.gif
 *.mp4
 *.h5
@@ -19,3 +21,4 @@ tests/test_integrator
 __pycache__/
 *.o
 grid_solver/bin/*
+*easy_plot*
