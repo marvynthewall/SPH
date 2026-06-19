@@ -12,6 +12,7 @@ tests/test_kernel
 tests/test_integrator
 *.csv
 *.png
+*.jpeg
 *.gif
 *.mp4
 *.h5
